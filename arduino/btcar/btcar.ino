@@ -13,7 +13,7 @@ const int m2Dir2Pin = 8;
 const int m2PwmPin = 6;
 
 char cmd = 0;
-int speedVal = 0;
+int speedVal = 255;
 
 void setup() {   
   Serial.begin(9600);  
@@ -27,96 +27,89 @@ void setup() {
   pinMode(m2Dir2Pin,OUTPUT);
   pinMode(m2PwmPin,OUTPUT);
 
+  updateSpeedAll();
 }
 
 void loop() {
-  
-//  test();
-//   if (true) {
-//    return;
-//  }
-//  if (Serial.available()) {
-//    char ccc = Serial.read();
-//     Serial.write(ccc);
-//     Serial.write(ccc + 1);
-//     return;
-//  }
-  
+
+  //  test();
+  //   if (true) {
+  //    return;
+  //  }
+  //  if (Serial.available()) {
+  //    char ccc = Serial.read();
+  //     Serial.write(ccc);
+  //     Serial.write(ccc + 1);
+  //     return;
+  //  }
+
   if (bt.available() > 0) {
     cmd = bt.read();
-    //Serial.print("I received: ");
-    //Serial.println(cmd);
     bt.print("I received: ");
     bt.println(cmd);
-    
- // say what you got:
-                //Serial.print("I received: ");
-                //Serial.println(incomingByte, DEC);
-    switch (cmd) {
-      case 'w':
-        updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 1);
-        break;
-      case 's':
-        updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 0);
-        break;
-      case 'z':
-        updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 2);
-        break;
-        
-      case 'e':
-        updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 1);
-        break;
-      case 'd':
-        updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 0);
-        break;
-      case 'x':
-        updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 2);
-        break;
 
-      case 'p':
-        updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 3);
-        updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 3);
-        break;
-        
-      case 'u':
-        speedVal = 255;
-        updateSpeedAll();
-        break;
-      case 'h':
-        speedVal = 175;
-        updateSpeedAll();
-        break;
-      case 'b':
-        speedVal = 100;
-        updateSpeedAll();
-        break;
-      case 'o':
-        speedVal = 0;
-        updateSpeedAll();
-        break;
-        
+    // say what you got:
+    //Serial.print("I received: ");
+    //Serial.println(incomingByte, DEC);
+    switch (cmd) {
+    case 'w'://forward
+      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 1);
+      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 1);
+      break;
+    case 'a'://rotate left
+      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 2);
+      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 1);
+      break;
+    case 's'://stop
+      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 0);
+      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 0);
+      break;
+    case 'd'://rotate right
+      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 1);
+      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 2);
+      break;
+    case 'z'://backwards
+      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 2);
+      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 2);
+      break;
+    case 'p'://breakes
+      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 3);
+      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 3);
+      break;
+    case 'u'://speed max
+      speedVal = 255;
+      updateSpeedAll();
+      break;
+    case 'h'://speed middle
+      speedVal = 175;
+      updateSpeedAll();
+      break;
+    case 'b'://speed low
+      speedVal = 100;
+      updateSpeedAll();
+      break;
     }
   }
 }
 
 void updateMotor(int dir1Pin, int dir2Pin, int pwmPin, int cmd) {
   switch (cmd) {
-    case 0:
-      digitalWrite(dir1Pin, LOW);
-      digitalWrite(dir2Pin, LOW);
-      break;
-    case 1:
-      digitalWrite(dir1Pin, LOW);
-      digitalWrite(dir2Pin, HIGH);
-      break;
-    case 2:
-      digitalWrite(dir1Pin, HIGH);
-      digitalWrite(dir2Pin, LOW);
-      break;
-    case 3:
-      digitalWrite(dir1Pin, HIGH);
-      digitalWrite(dir2Pin, HIGH);
-      break;
+  case 0:
+    digitalWrite(dir1Pin, LOW);
+    digitalWrite(dir2Pin, LOW);
+    break;
+  case 1:
+    digitalWrite(dir1Pin, LOW);
+    digitalWrite(dir2Pin, HIGH);
+    break;
+  case 2:
+    digitalWrite(dir1Pin, HIGH);
+    digitalWrite(dir2Pin, LOW);
+    break;
+  case 3:
+    digitalWrite(dir1Pin, HIGH);
+    digitalWrite(dir2Pin, HIGH);
+    break;
   }
 }
 
@@ -125,19 +118,4 @@ void updateSpeedAll() {
   analogWrite(m2PwmPin, speedVal);
 }
 
-void motorsStop() {
-  updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 0);
-  updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 0);
-}
-
-void test() {
-        speedVal = 100;
-        updateSpeedAll();
-  updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 1);
-  updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 1);
-  delay(5000);
-    updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 0);
-  updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 0);
-delay(5000);
-}
 
