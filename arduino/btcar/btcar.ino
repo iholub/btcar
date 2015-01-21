@@ -70,11 +70,11 @@ void loop() {
       break;
     case 'z'://backwards
       updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 2);
-      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 2);
+      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 2);
       break;
     case 'p'://breakes
       updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 3);
-      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 3);
+      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 3);
       break;
     case 'u'://speed max
       speedVal = 255;
