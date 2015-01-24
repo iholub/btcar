@@ -18,33 +18,19 @@ unsigned long pingTime1 = 0;
 unsigned long pingTime2 = 0;
 
 SoftwareSerial bt(10, 9); // RX, TX
-
-const int m1Dir1Pin = 4;
-const int m1Dir2Pin = 5;
-const int m1PwmPin = 3;
-
-const int m2Dir1Pin = 7;
-const int m2Dir2Pin = 8;
-const int m2PwmPin = 6;
+SoftwareSerial mt(2, 3); // RX, TX
 
 char cmd = 0;
 char dirCmd = 0;
-int speedVal = 255;
+byte buf[8];
+byte cmds[4];
+byte sp = 255;
 
 void setup() {   
   Serial.begin(9600);  
   bt.begin(38400);
+  mt.begin(9600);  
 
-  pinMode(m1Dir1Pin,OUTPUT);
-  pinMode(m1Dir2Pin,OUTPUT);
-  pinMode(m1PwmPin,OUTPUT);
-
-  pinMode(m2Dir1Pin,OUTPUT);
-  pinMode(m2Dir2Pin,OUTPUT);
-  pinMode(m2PwmPin,OUTPUT);
-
-  updateSpeedAll();
-  
   pingTimer = millis(); // Start now.
 }
 
@@ -56,8 +42,10 @@ void loop() {
   }
     if (stopBeforeObstacle) {
        if (isObstacleForward && (dirCmd == 'w')) {
-          updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 3);
-          updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 3);
+		cmds[0] = 100;
+		cmds[1] = 100;
+		cmds[2] = 100;
+		cmds[3] = 100;
        } else {
          //TODO 
        }
@@ -91,45 +79,54 @@ if (pingTime2 - pingTime1 > 500) {
     switch (cmd) {
     case 'w'://forward
       dirCmd = cmd;
-      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 1);
-      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 1);
+      cmds[0] = 98;
+      cmds[1] = 98;
+      cmds[2] = 98;
+      cmds[2] = 98;
       break;
     case 'a'://rotate left
       dirCmd = cmd;
-      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 2);
-      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 1);
+      cmds[0] = 99;
+      cmds[1] = 98;
+      cmds[2] = 99;
+      cmds[3] = 98;
       break;
     case 's'://stop
       dirCmd = cmd;
-      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 0);
-      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 0);
+      cmds[0] = 97;
+      cmds[1] = 97;
+      cmds[2] = 97;
+      cmds[3] = 97;
       break;
     case 'd'://rotate right
       dirCmd = cmd;
-      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 1);
-      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 2);
+      cmds[0] = 98;
+      cmds[1] = 99;
+      cmds[2] = 98;
+      cmds[3] = 99;
       break;
     case 'z'://backwards
       dirCmd = cmd;
-      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 2);
-      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 2);
+      cmds[0] = 99;
+      cmds[1] = 99;
+      cmds[2] = 99;
+      cmds[3] = 99;
       break;
     case 'p'://breakes
       dirCmd = cmd;
-      updateMotor(m1Dir1Pin, m1Dir2Pin, m1PwmPin, 3);
-      updateMotor(m2Dir1Pin, m2Dir2Pin, m2PwmPin, 3);
+      cmds[0] = 100;
+      cmds[1] = 100;
+      cmds[2] = 100;
+      cmds[3] = 100;
       break;
     case 'u'://speed max
-      speedVal = 255;
-      updateSpeedAll();
+      sp = 255;
       break;
     case 'h'://speed middle
-      speedVal = 175;
-      updateSpeedAll();
+      sp = 175;
       break;
     case 'b'://speed low
-      speedVal = 100;
-      updateSpeedAll();
+      sp = 100;
       break;
     case 'o':
       stopBeforeObstacle = !stopBeforeObstacle;
@@ -139,33 +136,20 @@ if (pingTime2 - pingTime1 > 500) {
         bt.println("obstacle off");
       }
     }
+	
   }
 }
 
-void updateMotor(int dir1Pin, int dir2Pin, int pwmPin, int cmd) {
-  switch (cmd) {
-  case 0:
-    digitalWrite(dir1Pin, LOW);
-    digitalWrite(dir2Pin, LOW);
-    break;
-  case 1:
-    digitalWrite(dir1Pin, LOW);
-    digitalWrite(dir2Pin, HIGH);
-    break;
-  case 2:
-    digitalWrite(dir1Pin, HIGH);
-    digitalWrite(dir2Pin, LOW);
-    break;
-  case 3:
-    digitalWrite(dir1Pin, HIGH);
-    digitalWrite(dir2Pin, HIGH);
-    break;
-  }
-}
-
-void updateSpeedAll() {
-  analogWrite(m1PwmPin, speedVal);
-  analogWrite(m2PwmPin, speedVal);
+void updateMotor(int motorInd, byte cmd) {
+  buf[0] = cmds[0];
+  buf[1] = cmds[1];
+  buf[2] = cmds[2];
+  buf[3] = cmds[3];
+  buf[4] = sp;
+  buf[5] = sp;
+  buf[6] = sp;
+  buf[7] = sp;
+  mt.write(buf, 8);
 }
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
