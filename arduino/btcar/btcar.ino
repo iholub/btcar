@@ -34,7 +34,8 @@ byte sp = 255;
 void setup() {   
   Serial.begin(9600);  
   bt.begin(38400);
-  mt.begin(9600);  
+  mt.begin(9600);
+  bt.listen();  
 
   pingTimer = millis(); // Start now.
 }
@@ -77,7 +78,7 @@ if (pingTime2 - pingTime1 > 500) {
       cmds[0] = 98;
       cmds[1] = 98;
       cmds[2] = 98;
-      cmds[2] = 98;
+      cmds[3] = 98;
       break;
     case 'a'://rotate left
       dirCmd = cmd;
