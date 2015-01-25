@@ -3,6 +3,11 @@
 #include <SoftwareSerial.h>
 #include <NewPing.h>
 
+#define BLUETOOTH_RX 10
+#define BLUETOOTH_TX 9
+#define MOTOR_SHIELD_RX 2
+#define MOTOR_SHIELD_TX 3
+
 #define TRIGGER_PIN  12  // Arduino pin tied to trigger pin on ping sensor.
 #define ECHO_PIN     11  // Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
@@ -17,8 +22,8 @@ boolean stopBeforeObstacle = false;
 unsigned long pingTime1 = 0;
 unsigned long pingTime2 = 0;
 
-SoftwareSerial bt(10, 9); // RX, TX
-SoftwareSerial mt(2, 3); // RX, TX
+SoftwareSerial bt(BLUETOOTH_RX, BLUETOOTH_TX); // RX, TX
+SoftwareSerial mt(MOTOR_SHIELD_RX, MOTOR_SHIELD_TX); // RX, TX
 
 char cmd = 0;
 char dirCmd = 0;
@@ -42,10 +47,11 @@ void loop() {
   }
     if (stopBeforeObstacle) {
        if (isObstacleForward && (dirCmd == 'w')) {
-		cmds[0] = 100;
-		cmds[1] = 100;
-		cmds[2] = 100;
-		cmds[3] = 100;
+	 cmds[0] = 100;
+	 cmds[1] = 100;
+	 cmds[2] = 100;
+	 cmds[3] = 100;
+         updateMotors();
        } else {
          //TODO 
        }
@@ -57,17 +63,6 @@ if (pingTime2 - pingTime1 > 500) {
   bt.print("distance: ");
   bt.println(pingDistance);
 }
-  //  test();
-  //   if (true) {
-  //    return;
-  //  }
-  //  if (Serial.available()) {
-  //    char ccc = Serial.read();
-  //     Serial.write(ccc);
-  //     Serial.write(ccc + 1);
-  //     return;
-  //  }
-
   if (bt.available() > 0) {
     cmd = bt.read();
     bt.print("I received: ");
@@ -75,7 +70,7 @@ if (pingTime2 - pingTime1 > 500) {
 
     // say what you got:
     //Serial.print("I received: ");
-    //Serial.println(incomingByte, DEC);
+    //Serial.println(cmd, DEC);
     switch (cmd) {
     case 'w'://forward
       dirCmd = cmd;
@@ -135,12 +130,13 @@ if (pingTime2 - pingTime1 > 500) {
       } else {
         bt.println("obstacle off");
       }
+      break;
     }
-	
+    updateMotors();
   }
 }
 
-void updateMotor(int motorInd, byte cmd) {
+void updateMotors() {
   buf[0] = cmds[0];
   buf[1] = cmds[1];
   buf[2] = cmds[2];
@@ -150,6 +146,8 @@ void updateMotor(int motorInd, byte cmd) {
   buf[6] = sp;
   buf[7] = sp;
   mt.write(buf, 8);
+  mt.flush();
+  Serial.println("updateMotors end");
 }
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
