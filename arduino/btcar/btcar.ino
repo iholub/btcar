@@ -12,6 +12,13 @@
 #define ECHO_PIN     11  // Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
+#define MAX_PACKET_SIZE 5
+char cmdBuf[MAX_PACKET_SIZE + 1];
+unsigned long packetTimeStart = 0;
+unsigned long packetTimeCurrent = 0;
+boolean startPacketReading = false;
+int packetBufCounter = 0;
+
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
 unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
@@ -21,6 +28,7 @@ boolean isObstacleForward = false;
 boolean stopBeforeObstacle = false;
 unsigned long pingTime1 = 0;
 unsigned long pingTime2 = 0;
+
 
 SoftwareSerial bt(BLUETOOTH_RX, BLUETOOTH_TX); // RX, TX
 SoftwareSerial mt(MOTOR_SHIELD_RX, MOTOR_SHIELD_TX); // RX, TX
@@ -66,8 +74,53 @@ if (pingTime2 - pingTime1 > 500) {
 }
   if (bt.available() > 0) {
     cmd = bt.read();
+    //Serial.print(cmd);
     bt.print("I received: ");
     bt.println(cmd);
+    if (startPacketReading) {
+      packetTimeCurrent = millis();
+      if (packetTimeCurrent - packetTimeStart > 15000) {
+        //timeout
+        Serial.print("timeout, ");
+        cmdBuf[packetBufCounter] = 0;
+        Serial.print("buf: ");
+        Serial.println(cmdBuf);
+        
+        packetBufCounter = 0;
+        startPacketReading = false;
+      } else if (packetBufCounter >= MAX_PACKET_SIZE) {
+        //no end of packet symbol
+        Serial.print("no end of packet, ");
+        cmdBuf[packetBufCounter] = 0;
+        Serial.print("buf: ");
+        Serial.println(cmdBuf);
+        
+        packetBufCounter = 0;
+        startPacketReading = false;
+
+      } else {
+        if (cmd == '$') {
+          //end of packet
+          //parse packet
+          cmdBuf[packetBufCounter] = 0;
+          Serial.print("ok, buf: ");
+          Serial.println(cmdBuf);
+          
+          packetBufCounter = 0;
+          startPacketReading = false;
+        } else {
+          cmdBuf[packetBufCounter] = cmd;
+          packetBufCounter++;
+        }
+      }
+    }
+    if (cmd == '#') {
+      packetTimeStart = millis();
+      startPacketReading = true;
+      for (int i = 0; i < MAX_PACKET_SIZE; i++) {
+        cmdBuf[i] = 0;
+      }
+    }
 
     // say what you got:
     //Serial.print("I received: ");
@@ -148,7 +201,7 @@ void updateMotors() {
   buf[7] = sp;
   mt.write(buf, 8);
   mt.flush();
-  Serial.println("updateMotors end");
+  //Serial.println("updateMotors end");
 }
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
