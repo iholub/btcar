@@ -3,7 +3,10 @@
 #include <SoftwareSerial.h>
 #include <NewPing.h>
 
-#define MOTOR_SHIELD_TRANSFER_SPEED 115200
+//#define TEST
+//#define DEBUG
+
+#define MSH_SPEED 9600
 
 #define BLUETOOTH_RX 10
 #define BLUETOOTH_TX 9
@@ -50,10 +53,12 @@ int rPwm = 0;
 boolean stopBeforeObstacle = false;
 boolean stoppedBeforeObstacle = false;
 
-void setup() {   
+void setup() {
+#ifdef DEBUG  
   Serial.begin(9600);  
+#endif
   bt.begin(38400);
-  mt.begin(MOTOR_SHIELD_TRANSFER_SPEED);
+  mt.begin(MSH_SPEED);
   bt.listen();  
 
   cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string
@@ -62,6 +67,13 @@ void setup() {
 }
 
 void loop() {
+#ifdef TEST
+  if (true) {
+    testMotorShield();
+    return;
+  }
+#endif
+
   // Notice how there's no delays in this sketch to allow you to do other processing in-line while doing distance pings.
   if (millis() >= pingTimer) {   // pingSpeed milliseconds since last ping, do another ping.
     pingTimer += pingSpeed;      // Set the next ping time.
@@ -99,22 +111,26 @@ void loop() {
       packetTimeCurrent = millis();
       if (packetTimeCurrent - packetTimeStart > PACKET_TIMEOUT) {
         //timeout
-        Serial.print("timeout, ");
         cmdBuf[packetBufCounter] = 0;
+#ifdef DEBUG
+        Serial.print("timeout, ");
         Serial.print("buf: ");
         Serial.println(cmdBuf);
+#endif
 
-        packetBufCounter = 0;
+          packetBufCounter = 0;
         startPacketReading = false;
       } 
       else if (packetBufCounter >= MAX_PACKET_SIZE) {
         //no end of packet symbol
-        Serial.print("no end of packet, ");
         cmdBuf[packetBufCounter] = 0;
+#ifdef DEBUG
+        Serial.print("no end of packet, ");
         Serial.print("buf: ");
         Serial.println(cmdBuf);
+#endif
 
-        packetBufCounter = 0;
+          packetBufCounter = 0;
         startPacketReading = false;
       } 
       else {
@@ -122,10 +138,12 @@ void loop() {
           //end of packet
           //parse packet
           cmdBuf[packetBufCounter] = 0;
+#ifdef DEBUG
           Serial.print("ok, buf: ");
           Serial.println(cmdBuf);
+#endif
 
-          boolean parsedOk = parseCmdPacket();
+            boolean parsedOk = parseCmdPacket();
           if (parsedOk) {
             if (cmdUpdateMotor) {
               updateMotorShield(lDir, rDir, lPwm, rPwm);
@@ -173,19 +191,21 @@ byte buildDir(char dirValue) {
 }
 
 void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
-//TODO 
+  //TODO 
   buf[0] = buf[1] = buildDir(lDir);
   buf[2] = buf[3] = buildDir(rDir);
   buf[4] = buf[5] = lPwm;
   buf[6] = buf[7] = rPwm;
   mt.write(buf, 8);
   mt.flush();
+#ifdef DEBUG
   Serial.print("shield: ");
   for (int i = 0; i < 8; i++) {
     Serial.print(buf[i]);
     Serial.print(" ");
   }
   Serial.println();
+#endif
 }
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
@@ -251,6 +271,65 @@ void parseMotorCommand(String cmdStr, int pos) {
 void parseStopBeforeObstacle(String cmdStr, int pos) {
   stopBeforeObstacle = cmdStr.charAt(pos + 1) == '1';
 }
+
+#ifdef TEST
+void testMotorShield() {
+  char f = 'f';
+  char b = 'b';
+  char s = 's';
+  int speed = 100;
+  int maxSpeed = 255;
+  int del1 = 3000;
+  int del2 = 1000;
+
+  updateMotorShield(f, s, sp, 0);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  updateMotorShield(b, s, sp, 0);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  updateMotorShield(s, f, 0, sp);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  updateMotorShield(s, b, 0, sp);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  updateMotorShield(f, f, sp, sp);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  updateMotorShield(b, b, sp, sp);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  updateMotorShield(f, b, sp, sp);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  updateMotorShield(b, f, sp, sp);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  updateMotorShield(f, f, maxSpeed, maxSpeed);
+  delay(del1);
+  updateMotorShield(s, s, 0, 0);
+  delay(del2);
+
+  delay(5000);
+}
+#endif
 
 
 
