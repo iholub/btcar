@@ -1,8 +1,8 @@
 /*
  */
  
-int dir1Pins[4] = {2, 12, 7, 11};
-int dir2Pins[4] = {4, 13, 8, 10};
+int dir1Pins[4] = {2, 7, 12, 11};
+int dir2Pins[4] = {4, 8, 13, 10};
 int pwmPins[4]  = {3, 5, 6, 9};
 
 int buf[8];
