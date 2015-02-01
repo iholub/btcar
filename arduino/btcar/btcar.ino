@@ -13,7 +13,7 @@
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
 #define MAX_PACKET_SIZE 20
-#define PACKET_TIMEOUT 20
+#define PACKET_TIMEOUT 100
 char cmdBuf[MAX_PACKET_SIZE + 1];
 unsigned long packetTimeStart = 0;
 unsigned long packetTimeCurrent = 0;
@@ -85,14 +85,14 @@ void loop() {
   pingTime2 = millis();
   if (pingTime2 - pingTime1 > 500) {
     pingTime1 = pingTime2;
-    bt.print("distance: ");
-    bt.println(pingDistance);
+    //bt.print("distance: ");
+    //bt.println(pingDistance);
   }
   if (bt.available() > 0) {
     cmd = bt.read();
     //Serial.print(cmd);
-    bt.print("I received: ");
-    bt.println(cmd);
+    //bt.print("I received: ");
+    //bt.println(cmd);
     if (startPacketReading) {
       packetTimeCurrent = millis();
       if (packetTimeCurrent - packetTimeStart > PACKET_TIMEOUT) {
@@ -159,6 +159,7 @@ byte buildDir(char dirValue) {
   switch (dirValue) {
   case 'f':    
     res = 98;
+    break;
   case 'b':
     res = 99;
     break;
@@ -170,14 +171,19 @@ byte buildDir(char dirValue) {
 }
 
 void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
-
-  buf[0] = buf[2] = buildDir(lDir);
-  buf[1] = buf[3] = buildDir(rDir);
-  buf[4] = buf[6] = lPwm;
-  buf[5] = buf[7] = rPwm;
+//TODO 
+  buf[0] = buf[1] = buildDir(lDir);
+  buf[2] = buf[3] = buildDir(rDir);
+  buf[4] = buf[5] = lPwm;
+  buf[6] = buf[7] = rPwm;
   mt.write(buf, 8);
   mt.flush();
-  //Serial.println("updateMotors end");
+  Serial.print("shield: ");
+  for (int i = 0; i < 8; i++) {
+    Serial.print(buf[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
 }
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
