@@ -12,7 +12,8 @@
 #define ECHO_PIN     11  // Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
-#define MAX_PACKET_SIZE 5
+#define MAX_PACKET_SIZE 20
+#define PACKET_TIMEOUT 20
 char cmdBuf[MAX_PACKET_SIZE + 1];
 unsigned long packetTimeStart = 0;
 unsigned long packetTimeCurrent = 0;
@@ -25,7 +26,6 @@ unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (
 unsigned long pingTimer;     // Holds the next ping time.
 float pingDistance = 999.0;
 boolean isObstacleForward = false;
-boolean stopBeforeObstacle = false;
 unsigned long pingTime1 = 0;
 unsigned long pingTime2 = 0;
 
@@ -39,11 +39,22 @@ byte buf[8];
 byte cmds[4];
 byte sp = 255;
 
+boolean cmdUpdateMotor = false;
+boolean cmdStopBeforeObstacle = false;
+char lDir = 0;
+char rDir = 0;
+int lPwm = 0;
+int rPwm = 0;
+boolean stopBeforeObstacle = false;
+boolean stoppedBeforeObstacle = false;
+
 void setup() {   
   Serial.begin(9600);  
   bt.begin(38400);
   mt.begin(9600);
   bt.listen();  
+
+  cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string
 
   pingTimer = millis(); // Start now.
 }
@@ -54,24 +65,29 @@ void loop() {
     pingTimer += pingSpeed;      // Set the next ping time.
     sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
   }
-    if (stopBeforeObstacle) {
-       if (isObstacleForward && (dirCmd == 'w')) {
-	 cmds[0] = 100;
-	 cmds[1] = 100;
-	 cmds[2] = 100;
-	 cmds[3] = 100;
-         updateMotors();
-       } else {
-         //TODO 
-       }
-    }
 
-pingTime2 = millis();
-if (pingTime2 - pingTime1 > 500) {
-  pingTime1 = pingTime2;
-  bt.print("distance: ");
-  bt.println(pingDistance);
-}
+  cmdUpdateMotor = false;
+  cmdStopBeforeObstacle = false;
+
+  if (stopBeforeObstacle) {
+    if (isObstacleForward && (lDir == 'f') && (rDir == 'f')) {
+      stoppedBeforeObstacle = true;
+      updateMotorShield('s', 's', 0, 0);
+    } 
+    else {
+      if (stoppedBeforeObstacle) {
+        stoppedBeforeObstacle = false;
+        updateMotorShield(lDir, rDir, lPwm, rPwm);
+      }
+    }
+  }
+
+  pingTime2 = millis();
+  if (pingTime2 - pingTime1 > 500) {
+    pingTime1 = pingTime2;
+    bt.print("distance: ");
+    bt.println(pingDistance);
+  }
   if (bt.available() > 0) {
     cmd = bt.read();
     //Serial.print(cmd);
@@ -79,36 +95,45 @@ if (pingTime2 - pingTime1 > 500) {
     bt.println(cmd);
     if (startPacketReading) {
       packetTimeCurrent = millis();
-      if (packetTimeCurrent - packetTimeStart > 15000) {
+      if (packetTimeCurrent - packetTimeStart > PACKET_TIMEOUT) {
         //timeout
         Serial.print("timeout, ");
         cmdBuf[packetBufCounter] = 0;
         Serial.print("buf: ");
         Serial.println(cmdBuf);
-        
+
         packetBufCounter = 0;
         startPacketReading = false;
-      } else if (packetBufCounter >= MAX_PACKET_SIZE) {
+      } 
+      else if (packetBufCounter >= MAX_PACKET_SIZE) {
         //no end of packet symbol
         Serial.print("no end of packet, ");
         cmdBuf[packetBufCounter] = 0;
         Serial.print("buf: ");
         Serial.println(cmdBuf);
-        
+
         packetBufCounter = 0;
         startPacketReading = false;
-
-      } else {
+      } 
+      else {
         if (cmd == '$') {
           //end of packet
           //parse packet
           cmdBuf[packetBufCounter] = 0;
           Serial.print("ok, buf: ");
           Serial.println(cmdBuf);
-          
+
+          boolean parsedOk = parseCmdPacket();
+          if (parsedOk) {
+            if (cmdUpdateMotor) {
+              updateMotorShield(lDir, rDir, lPwm, rPwm);
+            }
+          }
+
           packetBufCounter = 0;
           startPacketReading = false;
-        } else {
+        } 
+        else {
           cmdBuf[packetBufCounter] = cmd;
           packetBufCounter++;
         }
@@ -125,80 +150,31 @@ if (pingTime2 - pingTime1 > 500) {
     // say what you got:
     //Serial.print("I received: ");
     //Serial.println(cmd, DEC);
-    switch (cmd) {
-    case 'w'://forward
-      dirCmd = cmd;
-      cmds[0] = 98;
-      cmds[1] = 98;
-      cmds[2] = 98;
-      cmds[3] = 98;
-      break;
-    case 'a'://rotate left
-      dirCmd = cmd;
-      cmds[0] = 99;
-      cmds[1] = 98;
-      cmds[2] = 99;
-      cmds[3] = 98;
-      break;
-    case 's'://stop
-      dirCmd = cmd;
-      cmds[0] = 97;
-      cmds[1] = 97;
-      cmds[2] = 97;
-      cmds[3] = 97;
-      break;
-    case 'd'://rotate right
-      dirCmd = cmd;
-      cmds[0] = 98;
-      cmds[1] = 99;
-      cmds[2] = 98;
-      cmds[3] = 99;
-      break;
-    case 'z'://backwards
-      dirCmd = cmd;
-      cmds[0] = 99;
-      cmds[1] = 99;
-      cmds[2] = 99;
-      cmds[3] = 99;
-      break;
-    case 'p'://breakes
-      dirCmd = cmd;
-      cmds[0] = 100;
-      cmds[1] = 100;
-      cmds[2] = 100;
-      cmds[3] = 100;
-      break;
-    case 'u'://speed max
-      sp = 255;
-      break;
-    case 'h'://speed middle
-      sp = 175;
-      break;
-    case 'b'://speed low
-      sp = 100;
-      break;
-    case 'o':
-      stopBeforeObstacle = !stopBeforeObstacle;
-      if (stopBeforeObstacle) {
-        bt.println("obstacle on");
-      } else {
-        bt.println("obstacle off");
-      }
-      break;
-    }
-    updateMotors();
+
   }
 }
 
-void updateMotors() {
-  buf[0] = cmds[0];
-  buf[1] = cmds[1];
-  buf[2] = cmds[2];
-  buf[3] = cmds[3];
-  buf[4] = sp;
-  buf[5] = sp;
-  buf[6] = sp;
-  buf[7] = sp;
+byte buildDir(char dirValue) {
+  byte res = 0;
+  switch (dirValue) {
+  case 'f':    
+    res = 98;
+  case 'b':
+    res = 99;
+    break;
+  case 's':
+    res = 100;
+    break;
+  }
+  return res;
+}
+
+void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
+
+  buf[0] = buf[2] = buildDir(lDir);
+  buf[1] = buf[3] = buildDir(rDir);
+  buf[4] = buf[6] = lPwm;
+  buf[5] = buf[7] = rPwm;
   mt.write(buf, 8);
   mt.flush();
   //Serial.println("updateMotors end");
@@ -213,4 +189,61 @@ void echoCheck() { // Timer2 interrupt calls this function every 24uS where you 
   }
   // Don't do anything here!
 }
+
+boolean parseCmdPacket() {
+  String cmdStr = String(cmdBuf);
+  int strLen = cmdStr.length();
+  if (strLen == 0) {
+    return false;
+  }
+
+  int pos = 0;
+  boolean err = false;
+  char actionCommand;
+  while (pos <= strLen - 1) {
+    actionCommand = cmdStr.charAt(pos);
+    int cmdLength = 0;
+    if (actionCommand == 'm') {
+      cmdLength = 8;
+      if (pos + cmdLength <= strLen - 1) {
+        cmdUpdateMotor = true;
+        parseMotorCommand(cmdStr, pos);
+      } 
+      else {
+        err = true;
+        break;
+      }
+    }
+    else if (actionCommand == 'o')  {
+      cmdLength = 1;
+      cmdStopBeforeObstacle = true;
+      parseStopBeforeObstacle(cmdStr, pos);
+    }
+    else {
+      err = true;
+      break;
+    }
+    pos = pos + 1 + cmdLength;
+  }
+
+  return !err;
+}
+
+void parseMotorCommand(String cmdStr, int pos) {
+  lDir = cmdStr.charAt(pos + 1);
+  rDir = cmdStr.charAt(pos + 5);
+  String lPwmStr = cmdStr.substring(pos + 2, pos + 5);
+  String rPwmStr = cmdStr.substring(pos + 6, pos + 9);
+  lPwm = lPwmStr.toInt();
+  rPwm = rPwmStr.toInt();
+  //Serial.println(lPwm);
+  //      Serial.println(rPwm);
+}
+
+void parseStopBeforeObstacle(String cmdStr, int pos) {
+  stopBeforeObstacle = cmdStr.charAt(pos + 1) == '1';
+}
+
+
+
 
