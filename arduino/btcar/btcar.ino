@@ -3,6 +3,8 @@
 #include <SoftwareSerial.h>
 #include <NewPing.h>
 
+#define MOTOR_SHIELD_TRANSFER_SPEED 115200
+
 #define BLUETOOTH_RX 10
 #define BLUETOOTH_TX 9
 #define MOTOR_SHIELD_RX 2
@@ -51,7 +53,7 @@ boolean stoppedBeforeObstacle = false;
 void setup() {   
   Serial.begin(9600);  
   bt.begin(38400);
-  mt.begin(9600);
+  mt.begin(MOTOR_SHIELD_TRANSFER_SPEED);
   bt.listen();  
 
   cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string

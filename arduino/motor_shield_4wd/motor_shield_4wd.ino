@@ -1,5 +1,6 @@
 /*
  */
+#define MOTOR_SHIELD_TRANSFER_SPEED 115200
  
 int dir1Pins[4] = {2, 7, 12, 11};
 int dir2Pins[4] = {4, 8, 13, 10};
@@ -9,7 +10,7 @@ int buf[8];
 int ind;
 
 void setup() {   
-  Serial.begin(9600);  
+  Serial.begin(MOTOR_SHIELD_TRANSFER_SPEED); 
 
   for (ind = 0; ind < 4; ind++) {
     pinMode(dir1Pins[ind], OUTPUT);
