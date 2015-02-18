@@ -1,7 +1,5 @@
 /*
  */
-#define MSH_SPEED 9600
- // Constants that the user passes in to the motor calls
 
 #define FORWARD 1
 #define BACKWARD 2
@@ -15,38 +13,42 @@ int clockPin = 12;
 ////Pin connected to DS of 74HC595
 int dataPin = 11;
 
-int dir1Pins[4] = {2, 7, 12, 11};
-int dir2Pins[4] = {4, 8, 13, 10};
-int pwmPins[4]  = {3, 5, 6, 9};
+int pwmPins[4]  = {5, 6, 9, 10};
 
 int buf[8];
 int ind;
+int pwmSpeed = 0;
 
 uint8_t latch_state = 0;
 
-void setup2() {   
-  Serial.begin(MSH_SPEED); 
-
-  for (ind = 0; ind < 4; ind++) {
-    pinMode(dir1Pins[ind], OUTPUT);
-    pinMode(dir2Pins[ind], OUTPUT);
-    pinMode(pwmPins[ind], OUTPUT);
-  }
-}
-
 void setup() {
-    pinMode(latchPin, OUTPUT);
+  pinMode(latchPin, OUTPUT);
   pinMode(dataPin, OUTPUT);  
   pinMode(clockPin, OUTPUT);
   
   for (ind = 0; ind < 4; ind++) {
     pinMode(pwmPins[ind], OUTPUT);
-    analogWrite(pwmPins[ind], 100);
   }
-  
 }
 
 void loop() {
+  pwmSpeed = 100;
+  updateSpeed();
+  test();
+  
+  pwmSpeed = 255;
+  updateSpeed();
+  test();
+}
+
+void updateSpeed() {
+  for (ind = 0; ind < 4; ind++) {
+    pinMode(pwmPins[ind], OUTPUT);
+    analogWrite(pwmPins[ind], pwmSpeed);
+  }
+} 
+
+void test() {
   run(0,1,FORWARD);
   delay(1000);
   run(0,1,BACKWARD);
@@ -88,24 +90,6 @@ void loop() {
   run(6,7,RELEASE);
   
   delay(1000);
-}
-
-void loop2() {
-  if (Serial.available() >= 8) {
-    for (ind = 0; ind < 8; ind++) {
-      buf[ind] = Serial.read();
-    }
-//    Serial.print("I received: ");
-//    for (ind = 0; ind < 8; ind++) {
-//      Serial.print(buf[ind]);
-//      Serial.print("---");
-//    }
-//    Serial.println(" end");
-    
-    for (ind = 0; ind < 4; ind++) {
-      updateMotor(dir1Pins[ind], dir2Pins[ind], pwmPins[ind], buf[ind], buf[ind + 4]);
-    }
-  }
 }
 
 void latch_tx(void) {
