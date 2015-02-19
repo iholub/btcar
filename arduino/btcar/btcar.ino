@@ -1,13 +1,9 @@
 /*
  */
-#include <SoftwareSerial.h>
 #include <NewPing.h>
 
 //#define TEST
 //#define DEBUG
-
-#define BLUETOOTH_RX A6
-#define BLUETOOTH_TX A7
 
 #define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
 #define ECHO_PIN     3  // Arduino pin tied to echo pin on ping sensor.
@@ -34,12 +30,8 @@ boolean isObstacleForward = false;
 unsigned long pingTime1 = 0;
 unsigned long pingTime2 = 0;
 
-
-SoftwareSerial bt(BLUETOOTH_RX, BLUETOOTH_TX); // RX, TX
-
 char cmd = 0;
 char dirCmd = 0;
-byte buf[8];
 byte cmds[4];
 byte sp = 255;
 
@@ -52,17 +44,48 @@ int rPwm = 0;
 boolean stopBeforeObstacle = false;
 boolean stoppedBeforeObstacle = false;
 
+// motors start
+
+#define FORWARD 1
+#define BACKWARD 2
+#define BRAKE 3
+#define RELEASE 4
+
+//Pin connected to ST_CP of 74HC595
+int latchPin = 8;
+//Pin connected to SH_CP of 74HC595
+int clockPin = 12;
+////Pin connected to DS of 74HC595
+int dataPin = 11;
+
+int pwmPins[4]  = {5, 6, 9, 10};
+
+int ind;
+int pwmSpeed = 0;
+
+uint8_t latch_state = 0;
+
+// motors end
+
+int dir1Pins[4] = {0, 2, 4, 6};
+int dir2Pins[4] = {1, 3, 5, 7};
+char dirs[4] = {'s', 's', 's', 's'};
+
 void setup() {
   Serial.begin(38400);
-#ifdef DEBUG 
-  Serial.begin(9600);  
-#endif
-  bt.begin(38400);
-  bt.listen();  
 
   cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string
 
   pingTimer = millis(); // Start now.
+  
+  pinMode(latchPin, OUTPUT);
+  pinMode(dataPin, OUTPUT);  
+  pinMode(clockPin, OUTPUT);
+  
+  for (ind = 0; ind < 4; ind++) {
+    pinMode(pwmPins[ind], OUTPUT);
+  }
+ 
 }
 
 void loop() {
@@ -102,8 +125,8 @@ void loop() {
     //bt.print("distance: ");
     //bt.println(pingDistance);
   }
-  if (bt.available() > 0) {
-    cmd = bt.read();
+  if (Serial.available() > 0) {
+    cmd = Serial.read();
     //Serial.print(cmd);
     //bt.print("I received: ");
     //bt.println(cmd);
@@ -174,36 +197,19 @@ void loop() {
   }
 }
 
-byte buildDir(char dirValue) {
-  byte res = 0;
-  switch (dirValue) {
-  case 'f':    
-    res = 98;
-    break;
-  case 'b':
-    res = 99;
-    break;
-  case 's':
-    res = 100;
-    break;
-  }
-  return res;
-}
-
 void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
-  //TODO 
-  buf[0] = buf[1] = buildDir(lDir);
-  buf[2] = buf[3] = buildDir(rDir);
-  buf[4] = buf[5] = lPwm;
-  buf[6] = buf[7] = rPwm;
-  //mt.write(buf, 8);
-  //mt.flush();
-#ifdef DEBUG
-  Serial.print("shield: ");
-  for (int i = 0; i < 8; i++) {
-    Serial.print(buf[i]);
-    Serial.print(" ");
+  dirs[0] = dirs[1] = lDir;
+  dirs[2] = dirs[3] = rDir;
+  for (int i = 0; i < 4; i++) {
+    updateShiftRegister(dir1Pins[i], dir2Pins[i], dirs[i]);
   }
+  
+ digitalWrite(latchPin, LOW);
+ shiftOut(dataPin, clockPin, LSBFIRST, latch_state);
+ digitalWrite(latchPin, HIGH);
+  
+#ifdef DEBUG
+  Serial.print("shifts: ");
   Serial.println();
 #endif
 }
@@ -282,6 +288,23 @@ void parseMotorCommand(String cmdStr, int pos) {
 
 void parseStopBeforeObstacle(String cmdStr, int pos) {
   stopBeforeObstacle = cmdStr.charAt(pos + 1) == '1';
+}
+
+void updateShiftRegister(uint8_t a, uint8_t b, char cmd) {
+  switch (cmd) {
+  case 'f':
+    latch_state |= _BV(a);
+    latch_state &= ~_BV(b); 
+    break;
+  case 'b':
+    latch_state &= ~_BV(a);
+    latch_state |= _BV(b); 
+    break;
+  case 's':
+    latch_state &= ~_BV(a);     // A and B both low
+    latch_state &= ~_BV(b); 
+    break;
+  }
 }
 
 #ifdef TEST
