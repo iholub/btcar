@@ -21,8 +21,9 @@ unsigned long packetTimeCurrent = 0;
 boolean startPacketReading = false;
 int packetBufCounter = 0;
 
-NewPing sonar(13, 7, MAX_DISTANCE);
-//NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
+//NewPing sonar(13, 7, MAX_DISTANCE);
+//NewPing sonar(A2, A3, MAX_DISTANCE);
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 //NewPing sonar2(13, 7, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
 unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
@@ -219,6 +220,7 @@ void echoCheck() { // Timer2 interrupt calls this function every 24uS where you 
    }
 //  if (sonar2.check_timer()) {
 //    pingDistance2 = sonar2.ping_result / US_ROUNDTRIP_CM;
+//    p2 = pingDistance2;
 //  }
   if (p1 > 0 || p2 > 0) {
     Serial.print(p1);
