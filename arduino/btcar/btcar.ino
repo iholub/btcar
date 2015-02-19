@@ -2,8 +2,8 @@
  */
 #include <NewPing.h>
 
-//#define TEST
-//#define DEBUG
+#define TEST
+#define DEBUG
 
 #define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
 #define ECHO_PIN     3  // Arduino pin tied to echo pin on ping sensor.
@@ -33,7 +33,6 @@ unsigned long pingTime2 = 0;
 char cmd = 0;
 char dirCmd = 0;
 byte cmds[4];
-byte sp = 255;
 
 boolean cmdUpdateMotor = false;
 boolean cmdStopBeforeObstacle = false;
@@ -67,8 +66,8 @@ uint8_t latch_state = 0;
 
 // motors end
 
-int dir1Pins[4] = {0, 2, 4, 6};
-int dir2Pins[4] = {1, 3, 5, 7};
+int dir1Pins[4] = {0, 2, 5, 7};
+int dir2Pins[4] = {1, 3, 4, 6};
 char dirs[4] = {'s', 's', 's', 's'};
 
 void setup() {
@@ -205,13 +204,13 @@ void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
   }
   
  digitalWrite(latchPin, LOW);
- shiftOut(dataPin, clockPin, LSBFIRST, latch_state);
+ shiftOut(dataPin, clockPin, MSBFIRST, latch_state);
  digitalWrite(latchPin, HIGH);
-  
-#ifdef DEBUG
-  Serial.print("shifts: ");
-  Serial.println();
-#endif
+ 
+ analogWrite(pwmPins[0], lPwm);
+ analogWrite(pwmPins[1], lPwm);
+ analogWrite(pwmPins[2], rPwm);
+ analogWrite(pwmPins[3], rPwm);
 }
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
@@ -309,10 +308,12 @@ void updateShiftRegister(uint8_t a, uint8_t b, char cmd) {
 
 #ifdef TEST
 void testMotorShield() {
+  delay(1000);
+  
   char f = 'f';
   char b = 'b';
   char s = 's';
-  int speed = 100;
+  int sp = 100;
   int maxSpeed = 255;
   int del1 = 3000;
   int del2 = 1000;
