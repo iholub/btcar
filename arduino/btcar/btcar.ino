@@ -6,15 +6,11 @@
 //#define TEST
 //#define DEBUG
 
-#define MSH_SPEED 9600
+#define BLUETOOTH_RX A6
+#define BLUETOOTH_TX A7
 
-#define BLUETOOTH_RX 10
-#define BLUETOOTH_TX 9
-#define MOTOR_SHIELD_RX 2
-#define MOTOR_SHIELD_TX 3
-
-#define TRIGGER_PIN  12  // Arduino pin tied to trigger pin on ping sensor.
-#define ECHO_PIN     11  // Arduino pin tied to echo pin on ping sensor.
+#define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
+#define ECHO_PIN     3  // Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
 #define MAX_PACKET_SIZE 20
@@ -25,18 +21,20 @@ unsigned long packetTimeCurrent = 0;
 boolean startPacketReading = false;
 int packetBufCounter = 0;
 
-NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
+NewPing sonar(13, 7, MAX_DISTANCE);
+//NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
+//NewPing sonar2(13, 7, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
 unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
 unsigned long pingTimer;     // Holds the next ping time.
 float pingDistance = 999.0;
+float pingDistance2 = 999.0;
 boolean isObstacleForward = false;
 unsigned long pingTime1 = 0;
 unsigned long pingTime2 = 0;
 
 
 SoftwareSerial bt(BLUETOOTH_RX, BLUETOOTH_TX); // RX, TX
-SoftwareSerial mt(MOTOR_SHIELD_RX, MOTOR_SHIELD_TX); // RX, TX
 
 char cmd = 0;
 char dirCmd = 0;
@@ -54,11 +52,11 @@ boolean stopBeforeObstacle = false;
 boolean stoppedBeforeObstacle = false;
 
 void setup() {
-#ifdef DEBUG  
+  Serial.begin(38400);
+#ifdef DEBUG 
   Serial.begin(9600);  
 #endif
   bt.begin(38400);
-  mt.begin(MSH_SPEED);
   bt.listen();  
 
   cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string
@@ -78,6 +76,7 @@ void loop() {
   if (millis() >= pingTimer) {   // pingSpeed milliseconds since last ping, do another ping.
     pingTimer += pingSpeed;      // Set the next ping time.
     sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
+    //sonar2.ping_timer(echoCheck);
   }
 
   cmdUpdateMotor = false;
@@ -196,8 +195,8 @@ void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
   buf[2] = buf[3] = buildDir(rDir);
   buf[4] = buf[5] = lPwm;
   buf[6] = buf[7] = rPwm;
-  mt.write(buf, 8);
-  mt.flush();
+  //mt.write(buf, 8);
+  //mt.flush();
 #ifdef DEBUG
   Serial.print("shield: ");
   for (int i = 0; i < 8; i++) {
@@ -210,10 +209,21 @@ void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
   // Don't do anything here!
+  float p1 = -1;
+  float p2 = -1;
   if (sonar.check_timer()) { // This is how you check to see if the ping was received.
     // Here's where you can add code.
     pingDistance = sonar.ping_result / US_ROUNDTRIP_CM;
     isObstacleForward = pingDistance < 30;
+    p1 = pingDistance;
+   }
+//  if (sonar2.check_timer()) {
+//    pingDistance2 = sonar2.ping_result / US_ROUNDTRIP_CM;
+//  }
+  if (p1 > 0 || p2 > 0) {
+    Serial.print(p1);
+    Serial.print("   ");
+    Serial.println(p2);
   }
   // Don't do anything here!
 }
