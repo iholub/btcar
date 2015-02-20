@@ -64,18 +64,47 @@ int pwmSpeed = 0;
 
 uint8_t latch_state = 0;
 
-// motors end
-
 int dir1Pins[4] = {0, 2, 5, 7};
 int dir2Pins[4] = {1, 3, 4, 6};
 char dirs[4] = {'s', 's', 's', 's'};
+
+// motors end
+
+// ampers start
+#define AMP_OFFSET 2500
+#define BATT_AMP_VOLTS_PER_AMP 66
+#define BATT_AMP_PIN A4
+#define BATT_AMP_READ_SPEED 50
+unsigned long readBattAmpTimer;
+float batteryAmps = 0.0;
+// ampers end
+
+// voltage start
+#define BATT_VOLT_PIN A5
+#define BATT_VOLT_READ_SPEED 50
+unsigned long readBattVoltTimer;
+float batteryVoltage = 0.0;
+#define BATT_VOLT_R1 51000 
+#define BATT_VOLT_R2 47000 
+const float BATT_VOLT_VD = (BATT_VOLT_R1 + BATT_VOLT_R2)/BATT_VOLT_R2;
+// voltage end
+
+// info start
+#define INFO_SPEED 50
+unsigned long infoTimer;
+String infoStr;
+static char outstr[15];
+// info end
 
 void setup() {
   Serial.begin(38400);
 
   cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string
 
-  pingTimer = millis(); // Start now.
+  pinMode(BATT_AMP_PIN, INPUT);
+  pinMode(BATT_VOLT_PIN, INPUT);
+
+  pingTimer = readBattVoltTimer = readBattAmpTimer = infoTimer = millis(); // Start now.
   
   pinMode(latchPin, OUTPUT);
   pinMode(dataPin, OUTPUT);  
@@ -194,6 +223,22 @@ void loop() {
     //Serial.println(cmd, DEC);
 
   }
+  
+  if (millis() >= readBattAmpTimer) {
+    readBattAmpTimer += BATT_AMP_READ_SPEED;
+    readBatteryAmps();
+  }
+
+  if (millis() >= readBattVoltTimer) {
+    readBattVoltTimer += BATT_VOLT_READ_SPEED;
+    readBatteryVoltage();
+  }
+
+  if (millis() >= infoTimer) {
+    infoTimer += INFO_SPEED;
+    showInfo();
+  }
+
 }
 
 void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
@@ -228,9 +273,9 @@ void echoCheck() { // Timer2 interrupt calls this function every 24uS where you 
 //    p2 = pingDistance2;
 //  }
   if (p1 > 0 || p2 > 0) {
-    Serial.print(p1);
-    Serial.print("   ");
-    Serial.println(p2);
+    //Serial.print(p1);
+    //Serial.print("   ");
+    //Serial.println(p2);
   }
   // Don't do anything here!
 }
@@ -304,6 +349,32 @@ void updateShiftRegister(uint8_t a, uint8_t b, char cmd) {
     latch_state &= ~_BV(b); 
     break;
   }
+}
+
+void readBatteryVoltage() {
+  batteryVoltage = (analogRead(BATT_VOLT_PIN) * 5.0 * BATT_VOLT_VD) / 1024.0;
+}
+
+void readBatteryAmps() {
+  //TODO 1023 ???
+  batteryAmps = ((((analogRead(BATT_AMP_PIN) / 1023.0) * 5000) - AMP_OFFSET) / BATT_AMP_VOLTS_PER_AMP);
+}
+
+void showInfo() {
+    infoStr = "";
+     dtostrf(batteryAmps,7, 3, outstr);
+     infoStr += "amps: ";
+     infoStr += outstr;
+     
+     dtostrf(batteryVoltage,7, 3, outstr);
+     infoStr += ", volts: ";
+     infoStr += outstr;
+     
+     dtostrf(pingDistance,7, 3, outstr);
+     infoStr += ", ping: ";
+     infoStr += outstr;
+     
+     Serial.println(infoStr);
 }
 
 #ifdef TEST
