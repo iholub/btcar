@@ -2,8 +2,8 @@
  */
 #include <NewPing.h>
 
-#define TEST
-#define DEBUG
+//#define TEST
+//#define DEBUG
 
 #define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
 #define ECHO_PIN     3  // Arduino pin tied to echo pin on ping sensor.
