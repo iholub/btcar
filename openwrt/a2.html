@@ -1,0 +1,357 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Wi-fi controlled car with camera</title>
+    <script src="jquery.js"></script>
+    <script type="text/javascript">
+		var stopBeforeObstacle = false;
+		var stopBeforeObstacleOld = false;
+        var cgiUrl = "cgi-bin/lua.cgi?";
+        var ajax_request;
+        var cmdInProgress = false;
+        var showInfo = false;
+        var SPEED_MAX = 100;
+        var SPEED_DEFAULT = 100;
+        var speedStr = "100";
+        var SPEED_MIN = 0;
+        var speed = SPEED_DEFAULT;
+
+        var Cmd = function (code) {
+            //this.code = code;
+            this.down = false;
+        };
+
+        var SPEED_UP = 81;
+        var SPEED_DOWN = 69;
+        var KEY_UP = 38;
+        var KEY_DOWN = 40;
+        var KEY_LEFT = 37;
+        var KEY_RIGHT = 39;
+        var M_KEY_UP = 87;
+        var M_KEY_DOWN = 83;
+        var M_KEY_LEFT = 65;
+        var M_KEY_RIGHT = 68;
+        var needstop = false;
+
+        var cmdSpeedMap = {};
+        cmdSpeedMap[SPEED_UP] = new Cmd();
+        cmdSpeedMap[SPEED_DOWN] = new Cmd();
+
+        var cmdMap = {};
+        cmdMap[M_KEY_UP] = new Cmd();
+        cmdMap[M_KEY_DOWN] = new Cmd();
+        cmdMap[M_KEY_LEFT] = new Cmd();
+        cmdMap[M_KEY_RIGHT] = new Cmd();
+        cmdMap[KEY_UP] = new Cmd();
+        cmdMap[KEY_DOWN] = new Cmd();
+        cmdMap[KEY_LEFT] = new Cmd();
+        cmdMap[KEY_RIGHT] = new Cmd();
+
+        var speedUpdateRunning = false;
+        var speedUpdateTimer;
+        function updateSpeed() {
+            var u = cmdSpeedMap[SPEED_UP].down;
+            var d = cmdSpeedMap[SPEED_DOWN].down;
+            if (u || d) {
+                if (speedUpdateRunning) {
+                    return;
+                }
+                speedUpdateRunning = true;
+                if (u) {
+                    inc = 5;
+                } else {
+                    inc = -5;
+                }
+                speedUpdateTimer = setInterval(function () {
+                    speed += inc;
+                    if (speed > SPEED_MAX) {
+                        speed = SPEED_MAX;
+                    }
+                    if (speed < SPEED_MIN) {
+                        speed = SPEED_MIN;
+                    }
+                    speedStr = pad(speed, 3);
+                    $("#speed").html(speedStr);
+                }, 50);
+                return;
+            }
+            speedUpdateRunning = false;
+            clearInterval(speedUpdateTimer);
+        }
+        function pad(num, size) {
+            var s = "00" + num;
+            return s.substr(s.length - size);
+        }
+        var driving = false;
+        function buildCmd() {
+            var res = "a";
+            var u = cmdMap[M_KEY_UP].down;
+            var d = cmdMap[M_KEY_DOWN].down;
+            var l = cmdMap[M_KEY_LEFT].down;
+            var r = cmdMap[M_KEY_RIGHT].down;
+            var drivingNew = u || d || l || r;
+            if (u) {
+                if (l) {
+                    res = "#mf000f" + speedStr;
+                } else if (r) {
+                    res = "#mf" + speedStr + "f000";
+                } else {
+                    res = "#mf" + speedStr + "f" + speedStr;
+                }
+            } else if (d) {
+                if (l) {
+                    res = "#mb000b" + speedStr;
+                } else if (r) {
+                    res = "#mb" + speedStr + "b000";
+                } else {
+                    res = "#mb" + speedStr + "b" + speedStr;
+                }
+            } else if (l) {
+                res = "#mb" + speedStr + "f" + speedStr;
+            } else if (r) {
+                res = "#mf" + speedStr + "b" + speedStr;
+            } else {
+                if (driving) {
+                    res = "#mf000f000";
+                }
+            }
+            driving = drivingNew;
+            var u = cmdMap[KEY_UP].down;
+            var d = cmdMap[KEY_DOWN].down;
+            var l = cmdMap[KEY_LEFT].down;
+            var r = cmdMap[KEY_RIGHT].down;
+            if (u) {
+                res += "v0";
+            }
+            if (d) {
+                res += "v1";
+            }
+            if (l) {
+                res += "h1";
+            }
+            if (r) {
+                res += "h0";
+            }
+
+			//res += "o" + (stopBeforeObstacle ? "1" : "0");
+            //res += "i";
+
+            res += "z";
+            return res;
+        }
+
+
+        //	[new Cmd(87),
+        //	  new Cmd(83),
+        //	  new Cmd(65),
+        //	  new Cmd(68)];
+
+        /*
+         function codeInCmdList(code) {
+         return (code in cmdMap);
+         for (i = 0; i < cmdList.length; i++) {
+         if (cmdList[i] == code) {
+         return true;
+         };
+         }
+         return false;
+         }
+         */
+        var frequency = 20;
+        var cmd;
+
+        //	var running = false;
+
+        var doKeyDown = function (e) {
+            var code = e.which;
+            if (code == 13) {
+                e.preventDefault();
+            }
+            //log("-" + code + "-");
+            var valid = false;
+            if (code in cmdMap) {
+                cmdMap[code].down = true;
+                valid = true;
+            } else if (code in cmdSpeedMap) {
+                cmdSpeedMap[code].down = true;
+                updateSpeed();
+            }
+
+            console.log("down valid: " + valid);
+            return false;
+        };
+
+        var doKeyUp = function (e) {
+            var code = e.which;
+            if (code == 13) {
+                e.preventDefault();
+            }
+            var valid = false;
+            if (code in cmdMap) {
+                cmdMap[code].down = false;
+                valid = true;
+            } else if (code in cmdSpeedMap) {
+                cmdSpeedMap[code].down = false;
+                updateSpeed();
+            }
+
+            console.log("up valid: " + valid);
+
+            return false;
+        };
+
+        function onForward() {
+            var s = readSpeed();
+            doAjax("amf" + s + "f" + s + "z");
+        }
+
+        function onBack() {
+            var s = readSpeed();
+            doAjax("amb" + s + "b" + s + "z");
+        }
+
+        function onLeft() {
+            var s = readSpeed();
+            doAjax("amf" + s + "b" + s + "z");
+        }
+
+        function onRight() {
+            var s = readSpeed();
+            doAjax("amb" + s + "f" + s + "z");
+        }
+
+        function onStop() {
+            doAjax("amf000f000z");
+        }
+
+        function readSpeed() {
+            var s = $("#speedInput").val();
+            if (s.length != 3) {
+             s = "255";
+            }
+            return s;
+        }
+
+        function doAjax(cmd) {
+            var startTime = new Date().getTime();
+            if(typeof ajax_request !== 'undefined')
+                ajax_request.abort();
+            ajax_request = $.ajax({
+                url: cgiUrl + cmd,
+                type: "GET",
+                dataType: "html",
+                cache: false,
+                timeout: 5000,
+                success: function (data, textStatus, jqXHR) {
+                    $("#resp").html(data);
+                    //log("s");
+                },
+                complete: function () {
+                    cmdInProgress = false;
+
+                    var endTime = new Date().getTime();
+                    var latency = endTime - startTime;
+					updateLatency(latency);
+                },
+                error: function () {
+                    //log("e");
+                }
+            })
+        }
+
+		var latencyCmdCount = 5;
+		var latencySum = 0;
+		var latencyList = new Array();
+		
+		function updateLatency(latency) {
+			latencyList.push(latency);
+			latencySum += latency;
+			var arrLength = latencyList.length;
+			if (arrLength > latencyCmdCount) {
+				latencySum -= latencyList.shift();
+			}
+			var avgLatency = latencySum / arrLength;
+            $("#latency").html(latency);
+			$("#avg_latency").html(avgLatency);
+
+		}
+
+        function log(str) {
+            $("#log").append(str);
+        }
+
+        $(document).ready(function () {
+            //log( "ready!" );
+
+            $('#showInfo').change(function () {
+                showInfo = $(this).is(":checked");
+            });
+			
+            $('#stopBeforeObstacle').change(function () {
+                stopBeforeObstacle = $(this).is(":checked");
+            });
+			
+
+			$("#speed").html(speedStr);
+			
+            //PING.pingStart();
+        });
+
+    </script>
+</head>
+<body>
+<input type="checkbox" id="idlePing"/>Ping while idle
+<input type="checkbox" id="stopBeforeObstacle"/>Stop before obstacle
+<table border="0">
+<tr>
+	<td>cmd:</td><td><span id="cmd"></span></td>
+</tr>
+<tr>
+	<td>latency:</td><td><span id="latency"></span></td>
+</tr>
+<tr>
+	<td>avg latency:</td><td><span id="avg_latency"></span></td>
+</tr>
+<tr>
+	<td>drive speed:</td><td><span id="speed"></span></td>
+</tr>
+<tr>
+	<td>servo speed:</td><td><span id="servo_speed"></span></td>
+</tr>
+</table>
+<table>
+    <tr>
+        <td>
+            <input type="text" id="speedInput" name="speedInput" value="255"/>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <button type="button" onclick="javascript: onForward();">Forward</button>
+            <br>
+            <button type="button" onclick="javascript: onLeft();">Left</button>
+            <button type="button" onclick="javascript: onRight();">Right</button>
+            <br>
+            <button type="button" onclick="javascript: onBack();">Backward</button>
+            <br>
+            <button type="button" onclick="javascript: onStop();">Stop</button>
+        </td>
+    </tr>
+    <tr>
+        <td>response:</td><td><pre id="resp"></pre></td>
+    </tr>
+</table>
+
+<p>
+    <img id="camera" src="http://192.168.1.1:8080/?action=stream"/>
+
+<p/>
+
+
+
+<div id="log">
+</div>
+
+</body>
+</html>
