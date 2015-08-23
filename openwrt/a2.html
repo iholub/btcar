@@ -203,26 +203,42 @@
 
         function onForward() {
             var s = readSpeed();
-            doAjax("amf" + s + "f" + s + "z");
+			var cmd = "amf" + s + "f" + s;
+			cmd = addOb(cmd);
+            doAjax(cmd + "z");
         }
 
+		function addOb(cmd) {
+		  var res  = cmd + "o" + (stopBeforeObstacle ? "1" : "0");
+		  return res;
+		}
+		
         function onBack() {
             var s = readSpeed();
-            doAjax("amb" + s + "b" + s + "z");
+			var cmd = "amb" + s + "b" + s;
+			cmd = addOb(cmd);
+            doAjax(cmd + "z");
         }
 
         function onLeft() {
             var s = readSpeed();
-            doAjax("amf" + s + "b" + s + "z");
+			var cmd = "amf" + s + "b" + s;
+			cmd = addOb(cmd);
+            doAjax(cmd + "z");
         }
 
         function onRight() {
             var s = readSpeed();
-            doAjax("amb" + s + "f" + s + "z");
+			var cmd = "amb" + s + "f" + s;
+			cmd = addOb(cmd);
+            doAjax(cmd + "z");
         }
 
         function onStop() {
-            doAjax("amf000f000z");
+		    var s = "000";
+			var cmd = "amb" + s + "b" + s;
+			cmd = addOb(cmd);
+            doAjax(cmd + "z");
         }
 
         function readSpeed() {
