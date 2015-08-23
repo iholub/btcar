@@ -73,7 +73,7 @@ char dirs[4] = {'s', 's', 's', 's'};
 // ampers start
 #define AMP_OFFSET 2500
 #define BATT_AMP_VOLTS_PER_AMP 66
-#define BATT_AMP_PIN A4
+#define BATT_AMP_PIN A3
 #define BATT_AMP_READ_SPEED 50
 unsigned long readBattAmpTimer;
 float batteryAmps = 0.0;
@@ -185,7 +185,7 @@ void loop() {
         startPacketReading = false;
       } 
       else {
-        if (cmd == '$') {
+        if (cmd == 'z') {
           //end of packet
           //parse packet
           cmdBuf[packetBufCounter] = 0;
@@ -210,7 +210,7 @@ void loop() {
         }
       }
     }
-    if (cmd == '#') {
+    if (cmd == 'a') {
       packetTimeStart = millis();
       startPacketReading = true;
       for (int i = 0; i < MAX_PACKET_SIZE; i++) {
@@ -361,10 +361,14 @@ void readBatteryAmps() {
 }
 
 void showInfo() {
-    infoStr = "";
-     dtostrf(batteryAmps,7, 3, outstr);
-     infoStr += "amps: ";
-     infoStr += outstr;
+     //infoStr = "";
+     //dtostrf(batteryAmps,7, 3, outstr);
+     //infoStr += "amps: ";
+     //infoStr += outstr;
+
+     infoStr = "";
+     infoStr += "uptime: ";
+     infoStr += millis();
      
      dtostrf(batteryVoltage,7, 3, outstr);
      infoStr += ", volts: ";
