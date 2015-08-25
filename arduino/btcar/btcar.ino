@@ -1,12 +1,20 @@
 /*
  */
-#include <NewPing.h>
+#include <Servo.h>
+//#include <NewPing.h>
+
+const int hServoPin = 9; // Servo library disables analogWrite() (PWM) functionality on pins 9 and 10 
+const int vServoPin = 10; // Servo library disables analogWrite() (PWM) functionality on pins 9 and 10
+Servo servoH;          // horizontal servo
+Servo servoV;         // vertical servo
+int hServoVal;
+int vServoVal;
 
 //#define TEST
 //#define DEBUG
 
 #define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
-#define ECHO_PIN     3  // Arduino pin tied to echo pin on ping sensor.
+#define ECHO_PIN     13  // Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
 #define MAX_PACKET_SIZE 20
@@ -17,10 +25,8 @@ unsigned long packetTimeCurrent = 0;
 boolean startPacketReading = false;
 int packetBufCounter = 0;
 
-//NewPing sonar(13, 7, MAX_DISTANCE);
 //NewPing sonar(A2, A3, MAX_DISTANCE);
-NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
-//NewPing sonar2(13, 7, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
+//NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
 unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
 unsigned long pingTimer;     // Holds the next ping time.
@@ -36,6 +42,8 @@ byte cmds[4];
 
 boolean cmdUpdateMotor = false;
 boolean cmdStopBeforeObstacle = false;
+boolean cmdUpdateServoH = false;
+boolean cmdUpdateServoV = false;
 char lDir = 0;
 char rDir = 0;
 int lPwm = 0;
@@ -55,9 +63,9 @@ int latchPin = 8;
 //Pin connected to SH_CP of 74HC595
 int clockPin = 12;
 ////Pin connected to DS of 74HC595
-int dataPin = 11;
+int dataPin = 7;
 
-int pwmPins[4]  = {5, 6, 9, 10};
+int pwmPins[4]  = {5, 6, 3, 11};
 
 int ind;
 int pwmSpeed = 0;
@@ -110,6 +118,9 @@ void setup() {
   pinMode(dataPin, OUTPUT);  
   pinMode(clockPin, OUTPUT);
   
+  servoH.attach(hServoPin);
+  servoV.attach(vServoPin);
+
   for (ind = 0; ind < 4; ind++) {
     pinMode(pwmPins[ind], OUTPUT);
   }
@@ -127,12 +138,14 @@ void loop() {
   // Notice how there's no delays in this sketch to allow you to do other processing in-line while doing distance pings.
   if (millis() >= pingTimer) {   // pingSpeed milliseconds since last ping, do another ping.
     pingTimer += pingSpeed;      // Set the next ping time.
-    sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
+    //sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
     //sonar2.ping_timer(echoCheck);
   }
 
   cmdUpdateMotor = false;
   cmdStopBeforeObstacle = false;
+  cmdUpdateServoH = false;
+  cmdUpdateServoV = false;
 
   if (stopBeforeObstacle) {
     if (isObstacleForward && (lDir == 'f') && (rDir == 'f')) {
@@ -199,6 +212,12 @@ void loop() {
             if (cmdUpdateMotor) {
               updateMotorShield(lDir, rDir, lPwm, rPwm);
             }
+            if (cmdUpdateServoH) {
+              updateServo(servoH, hServoVal);
+            }
+            if (cmdUpdateServoV) {
+              updateServo(servoV, vServoVal);
+            }
           }
 
           packetBufCounter = 0;
@@ -241,6 +260,10 @@ void loop() {
 
 }
 
+void updateServo(Servo servo, int value) {
+  servo.write(value);
+}
+
 void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
   dirs[0] = dirs[1] = lDir;
   dirs[2] = dirs[3] = rDir;
@@ -262,12 +285,12 @@ void echoCheck() { // Timer2 interrupt calls this function every 24uS where you 
   // Don't do anything here!
   float p1 = -1;
   float p2 = -1;
-  if (sonar.check_timer()) { // This is how you check to see if the ping was received.
+//  if (sonar.check_timer()) { // This is how you check to see if the ping was received.
     // Here's where you can add code.
-    pingDistance = sonar.ping_result / US_ROUNDTRIP_CM;
-    isObstacleForward = pingDistance < 30;
-    p1 = pingDistance;
-   }
+//    pingDistance = sonar.ping_result / US_ROUNDTRIP_CM;
+//   isObstacleForward = pingDistance < 30;
+//    p1 = pingDistance;
+//   }
 //  if (sonar2.check_timer()) {
 //    pingDistance2 = sonar2.ping_result / US_ROUNDTRIP_CM;
 //    p2 = pingDistance2;
@@ -309,6 +332,28 @@ boolean parseCmdPacket() {
       cmdStopBeforeObstacle = true;
       parseStopBeforeObstacle(cmdStr, pos);
     }
+    else if (actionCommand == 'h') {
+      cmdLength = 3;
+      if (pos + cmdLength <= strLen - 1) {
+        cmdUpdateServoH = true;
+        parseServoCommandH(cmdStr, pos);
+      } 
+      else {
+        err = true;
+        break;
+      }
+    }
+    else if (actionCommand == 'v') {
+      cmdLength = 3;
+      if (pos + cmdLength <= strLen - 1) {
+        cmdUpdateServoV = true;
+        parseServoCommandV(cmdStr, pos);
+      } 
+      else {
+        err = true;
+        break;
+      }
+    }
     else {
       err = true;
       break;
@@ -317,6 +362,16 @@ boolean parseCmdPacket() {
   }
 
   return !err;
+}
+
+void parseServoCommandH(String cmdStr, int pos) {
+  String str = cmdStr.substring(pos + 1, pos + 4);
+  hServoVal = str.toInt();
+}
+
+void parseServoCommandV(String cmdStr, int pos) {
+  String str = cmdStr.substring(pos + 1, pos + 4);
+  vServoVal = str.toInt();
 }
 
 void parseMotorCommand(String cmdStr, int pos) {
