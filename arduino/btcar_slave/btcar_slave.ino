@@ -4,7 +4,7 @@
 #include <Wire.h>
 
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
-byte receivedCommands[20];
+byte buf[20];
 
 const int hServoPin = 9; // Servo library disables analogWrite() (PWM) functionality on pins 9 and 10 
 const int vServoPin = 10; // Servo library disables analogWrite() (PWM) functionality on pins 9 and 10
@@ -16,12 +16,6 @@ int vServoVal;
 boolean cmdUpdateMotor = false;
 boolean cmdUpdateServoH = false;
 boolean cmdUpdateServoV = false;
-char lDir = 0;
-char rDir = 0;
-int lPwm = 0;
-int rPwm = 0;
-
-// motors start
 
 //Pin connected to ST_CP of 74HC595
 int latchPin = 8;
@@ -32,14 +26,14 @@ int dataPin = 7;
 
 int pwmPins[4]  = {5, 6, 3, 11};
 
-int ind;
 int pwmSpeed = 0;
 
 uint8_t latch_state = 0;
 
 int dir1Pins[4] = {0, 2, 5, 7};
 int dir2Pins[4] = {1, 3, 4, 6};
-char dirs[4] = {'s', 's', 's', 's'};
+byte dirs[4] = {3, 3, 3, 3};
+byte pwms[4] = {0, 0, 0, 0};
 
 // motors end
 
@@ -54,7 +48,7 @@ void setup() {
   servoH.attach(hServoPin);
   servoV.attach(vServoPin);
 
-  for (ind = 0; ind < 4; ind++) {
+  for (int ind = 0; ind < 4; ind++) {
     pinMode(pwmPins[ind], OUTPUT);
   }
  
@@ -67,9 +61,7 @@ void updateServo(Servo servo, int value) {
   servo.write(value);
 }
 
-void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
-  dirs[0] = dirs[1] = lDir;
-  dirs[2] = dirs[3] = rDir;
+void updateMotorShield() {
   for (int i = 0; i < 4; i++) {
     updateShiftRegister(dir1Pins[i], dir2Pins[i], dirs[i]);
   }
@@ -78,57 +70,75 @@ void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
  shiftOut(dataPin, clockPin, MSBFIRST, latch_state);
  digitalWrite(latchPin, HIGH);
  
- analogWrite(pwmPins[0], lPwm);
- analogWrite(pwmPins[1], lPwm);
- analogWrite(pwmPins[2], rPwm);
- analogWrite(pwmPins[3], rPwm);
+//TODO first
+ analogWrite(pwmPins[0], pwms[0]);
+ analogWrite(pwmPins[1], pwms[1]);
+ analogWrite(pwmPins[2], pwms[2]);
+ analogWrite(pwmPins[3], pwms[3]);
 }
 
-void updateShiftRegister(uint8_t a, uint8_t b, char cmd) {
+void updateShiftRegister(uint8_t a, uint8_t b, byte cmd) {
   switch (cmd) {
-  case 'f':
+  case 1:
     latch_state |= _BV(a);
     latch_state &= ~_BV(b); 
     break;
-  case 'b':
+  case 2:
     latch_state &= ~_BV(a);
     latch_state |= _BV(b); 
     break;
-  case 's':
+  case 3:
     latch_state &= ~_BV(a);     // A and B both low
     latch_state &= ~_BV(b); 
     break;
   }
+  //TODO cmd 4
 }
 
 void receiveEvent(int bytesReceived)
 {
   for (int a = 0; a < bytesReceived; a++)
   {
-    receivedCommands[a] = Wire.read();
+    buf[a] = Wire.read();
   }
 
+  cmdUpdateMotor = false;
   cmdUpdateServoH = false;
   cmdUpdateServoV = false;
 
   int ind = 0;
   while (ind <= bytesReceived - 1) {
-    switch(receivedCommands[ind]){
+    switch(buf[ind]){
+      case 0x0C:
+        dirs[0] = buf[ind + 1];
+        pwms[0] = buf[ind + 2];
+        dirs[1] = buf[ind + 3];
+        pwms[1] = buf[ind + 4];
+        dirs[2] = buf[ind + 5];
+        pwms[2] = buf[ind + 6];
+        dirs[3] = buf[ind + 7];
+        pwms[3] = buf[ind + 8];
+        ind += 9;
+        cmdUpdateMotor = true;
+        break;
       case 0x0A:
-        hServoVal = receivedCommands[ind + 1];
-        cmdUpdateServoH = true;
+        hServoVal = buf[ind + 1];
         ind += 2;
+        cmdUpdateServoH = true;
         break;
       case 0x0B:
-        vServoVal = receivedCommands[ind + 1];
-        cmdUpdateServoV = true;
+        vServoVal = buf[ind + 1];
         ind += 2;
+        cmdUpdateServoV = true;
         break;
       default:
         return; // ignore the commands and return
      }    
   }
   
+  if (cmdUpdateMotor) {
+    updateMotorShield();
+  }
   if (cmdUpdateServoH) {
     updateServo(servoH, hServoVal);
   }

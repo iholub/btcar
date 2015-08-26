@@ -7,7 +7,7 @@
 int hServoVal;
 int vServoVal;
 
-//#define TEST
+#define TEST
 //#define DEBUG
 
 #define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
@@ -34,8 +34,6 @@ unsigned long pingTime1 = 0;
 unsigned long pingTime2 = 0;
 
 char cmd = 0;
-char dirCmd = 0;
-byte cmds[4];
 
 boolean cmdUpdateMotor = false;
 boolean cmdStopBeforeObstacle = false;
@@ -54,26 +52,6 @@ boolean stoppedBeforeObstacle = false;
 #define BACKWARD 2
 #define BRAKE 3
 #define RELEASE 4
-
-//Pin connected to ST_CP of 74HC595
-int latchPin = 8;
-//Pin connected to SH_CP of 74HC595
-int clockPin = 12;
-////Pin connected to DS of 74HC595
-int dataPin = 7;
-
-int pwmPins[4]  = {5, 6, 3, 11};
-
-int ind;
-int pwmSpeed = 0;
-
-uint8_t latch_state = 0;
-
-int dir1Pins[4] = {0, 2, 5, 7};
-int dir2Pins[4] = {1, 3, 4, 6};
-char dirs[4] = {'s', 's', 's', 's'};
-
-// motors end
 
 // ampers start
 #define AMP_OFFSET 2500
@@ -112,14 +90,6 @@ void setup() {
 
   pingTimer = readBattVoltTimer = readBattAmpTimer = infoTimer = millis(); // Start now.
   
-  pinMode(latchPin, OUTPUT);
-  pinMode(dataPin, OUTPUT);  
-  pinMode(clockPin, OUTPUT);
-  
-  for (ind = 0; ind < 4; ind++) {
-    pinMode(pwmPins[ind], OUTPUT);
-  }
- 
 }
 
 void loop() {
@@ -150,6 +120,7 @@ void loop() {
     else {
       if (stoppedBeforeObstacle) {
         stoppedBeforeObstacle = false;
+        //TODO fix
         updateMotorShield(lDir, rDir, lPwm, rPwm);
       }
     }
@@ -204,10 +175,7 @@ void loop() {
 
             boolean parsedOk = parseCmdPacket();
           if (parsedOk) {
-            if (cmdUpdateMotor) {
-              updateMotorShield(lDir, rDir, lPwm, rPwm);
-            }
-            updateServos();
+            updateSlave();
           }
 
           packetBufCounter = 0;
@@ -250,10 +218,22 @@ void loop() {
 
 }
 
-void updateServos() {
-  if (cmdUpdateServoH || cmdUpdateServoV) {
-    Serial.println("update servos");
+void updateSlave() {
+  if (cmdUpdateMotor || cmdUpdateServoH || cmdUpdateServoV) {
     Wire.beginTransmission(SLAVE_ADDR);
+    if (cmdUpdateMotor) {
+      Wire.write(0x0C);
+
+      Wire.write(dirToByte(lDir));
+      Wire.write(dirToByte(lPwm));
+      Wire.write(dirToByte(lDir));
+      Wire.write(dirToByte(lPwm));
+      
+      Wire.write(dirToByte(rDir));
+      Wire.write(dirToByte(rPwm));
+      Wire.write(dirToByte(rDir));
+      Wire.write(dirToByte(rPwm));
+    }
     if (cmdUpdateServoH) {
       Wire.write(0x0A);
       Wire.write(hServoVal);
@@ -266,21 +246,27 @@ void updateServos() {
   }
 }
 
-void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
-  dirs[0] = dirs[1] = lDir;
-  dirs[2] = dirs[3] = rDir;
-  for (int i = 0; i < 4; i++) {
-    updateShiftRegister(dir1Pins[i], dir2Pins[i], dirs[i]);
+byte dirToByte(char cmd) {
+  switch (cmd) {
+  case 'f':
+    return 1;
+  case 'b':
+    return 2;
+  case 's':
+    return 3;  
   }
-  
- digitalWrite(latchPin, LOW);
- shiftOut(dataPin, clockPin, MSBFIRST, latch_state);
- digitalWrite(latchPin, HIGH);
- 
- analogWrite(pwmPins[0], lPwm);
- analogWrite(pwmPins[1], lPwm);
- analogWrite(pwmPins[2], rPwm);
- analogWrite(pwmPins[3], rPwm);
+  //TODO brake, release
+  return 4;
+}
+
+void updateMotorShield(char plDir, char prDir, int plPwm, int prPwm) {
+  lDir = plDir; 
+  rDir = prDir; 
+  lPwm = plPwm; 
+  rPwm = prPwm;
+  cmdUpdateMotor = true;
+  updateSlave();
+  cmdUpdateMotor = false;
 }
 
 void echoCheck() { // Timer2 interrupt calls this function every 24uS where you can check the ping status.
@@ -389,23 +375,6 @@ void parseMotorCommand(String cmdStr, int pos) {
 
 void parseStopBeforeObstacle(String cmdStr, int pos) {
   stopBeforeObstacle = cmdStr.charAt(pos + 1) == '1';
-}
-
-void updateShiftRegister(uint8_t a, uint8_t b, char cmd) {
-  switch (cmd) {
-  case 'f':
-    latch_state |= _BV(a);
-    latch_state &= ~_BV(b); 
-    break;
-  case 'b':
-    latch_state &= ~_BV(a);
-    latch_state |= _BV(b); 
-    break;
-  case 's':
-    latch_state &= ~_BV(a);     // A and B both low
-    latch_state &= ~_BV(b); 
-    break;
-  }
 }
 
 void readBatteryVoltage() {
