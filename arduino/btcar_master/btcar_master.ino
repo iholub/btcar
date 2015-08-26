@@ -7,7 +7,7 @@
 int hServoVal;
 int vServoVal;
 
-#define TEST
+//#define TEST
 //#define DEBUG
 
 #define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
@@ -225,14 +225,14 @@ void updateSlave() {
       Wire.write(0x0C);
 
       Wire.write(dirToByte(lDir));
-      Wire.write(dirToByte(lPwm));
+      Wire.write(lPwm);
       Wire.write(dirToByte(lDir));
-      Wire.write(dirToByte(lPwm));
+      Wire.write(lPwm);
       
       Wire.write(dirToByte(rDir));
-      Wire.write(dirToByte(rPwm));
+      Wire.write(rPwm);
       Wire.write(dirToByte(rDir));
-      Wire.write(dirToByte(rPwm));
+      Wire.write(rPwm);
     }
     if (cmdUpdateServoH) {
       Wire.write(0x0A);

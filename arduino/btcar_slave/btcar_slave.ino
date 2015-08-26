@@ -10,12 +10,12 @@ const int hServoPin = 9; // Servo library disables analogWrite() (PWM) functiona
 const int vServoPin = 10; // Servo library disables analogWrite() (PWM) functionality on pins 9 and 10
 Servo servoH;          // horizontal servo
 Servo servoV;         // vertical servo
-int hServoVal;
-int vServoVal;
+int volatile hServoVal;
+int volatile vServoVal;
 
-boolean cmdUpdateMotor = false;
-boolean cmdUpdateServoH = false;
-boolean cmdUpdateServoV = false;
+boolean volatile cmdUpdateMotor = false;
+boolean volatile cmdUpdateServoH = false;
+boolean volatile cmdUpdateServoV = false;
 
 //Pin connected to ST_CP of 74HC595
 int latchPin = 8;
@@ -26,14 +26,12 @@ int dataPin = 7;
 
 int pwmPins[4]  = {5, 6, 3, 11};
 
-int pwmSpeed = 0;
-
 uint8_t latch_state = 0;
 
 int dir1Pins[4] = {0, 2, 5, 7};
 int dir2Pins[4] = {1, 3, 4, 6};
 byte dirs[4] = {3, 3, 3, 3};
-byte pwms[4] = {0, 0, 0, 0};
+int pwms[4] = {0, 0, 0, 0};
 
 // motors end
 
@@ -55,6 +53,18 @@ void setup() {
 }
 
 void loop() {
+  if (cmdUpdateMotor) {
+    cmdUpdateMotor = false;
+    updateMotorShield();
+  }
+  if (cmdUpdateServoH) {
+    cmdUpdateServoH = false;
+    updateServo(servoH, hServoVal);
+  }
+  if (cmdUpdateServoV) {
+    cmdUpdateServoV = false;
+    updateServo(servoV, vServoVal);
+  }
 }
 
 void updateServo(Servo servo, int value) {
@@ -134,16 +144,6 @@ void receiveEvent(int bytesReceived)
       default:
         return; // ignore the commands and return
      }    
-  }
-  
-  if (cmdUpdateMotor) {
-    updateMotorShield();
-  }
-  if (cmdUpdateServoH) {
-    updateServo(servoH, hServoVal);
-  }
-  if (cmdUpdateServoV) {
-    updateServo(servoV, vServoVal);
   }
   
   }
