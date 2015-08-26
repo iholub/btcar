@@ -1,12 +1,9 @@
 /*
  */
-#include <Servo.h>
 //#include <NewPing.h>
+#include <Wire.h>
+#define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
 
-const int hServoPin = 9; // Servo library disables analogWrite() (PWM) functionality on pins 9 and 10 
-const int vServoPin = 10; // Servo library disables analogWrite() (PWM) functionality on pins 9 and 10
-Servo servoH;          // horizontal servo
-Servo servoV;         // vertical servo
 int hServoVal;
 int vServoVal;
 
@@ -88,7 +85,7 @@ float batteryAmps = 0.0;
 // ampers end
 
 // voltage start
-#define BATT_VOLT_PIN A5
+#define BATT_VOLT_PIN A0
 #define BATT_VOLT_READ_SPEED 50
 unsigned long readBattVoltTimer;
 float batteryVoltage = 0.0;
@@ -106,11 +103,12 @@ static char outstr[15];
 
 void setup() {
   Serial.begin(38400);
+  Wire.begin();
 
   cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string
 
-  pinMode(BATT_AMP_PIN, INPUT);
-  pinMode(BATT_VOLT_PIN, INPUT);
+  //pinMode(BATT_AMP_PIN, INPUT);
+  //pinMode(BATT_VOLT_PIN, INPUT);
 
   pingTimer = readBattVoltTimer = readBattAmpTimer = infoTimer = millis(); // Start now.
   
@@ -118,9 +116,6 @@ void setup() {
   pinMode(dataPin, OUTPUT);  
   pinMode(clockPin, OUTPUT);
   
-  servoH.attach(hServoPin);
-  servoV.attach(vServoPin);
-
   for (ind = 0; ind < 4; ind++) {
     pinMode(pwmPins[ind], OUTPUT);
   }
@@ -212,12 +207,7 @@ void loop() {
             if (cmdUpdateMotor) {
               updateMotorShield(lDir, rDir, lPwm, rPwm);
             }
-            if (cmdUpdateServoH) {
-              updateServo(servoH, hServoVal);
-            }
-            if (cmdUpdateServoV) {
-              updateServo(servoV, vServoVal);
-            }
+            updateServos();
           }
 
           packetBufCounter = 0;
@@ -245,12 +235,12 @@ void loop() {
   
   if (millis() >= readBattAmpTimer) {
     readBattAmpTimer += BATT_AMP_READ_SPEED;
-    readBatteryAmps();
+    //readBatteryAmps();
   }
 
   if (millis() >= readBattVoltTimer) {
     readBattVoltTimer += BATT_VOLT_READ_SPEED;
-    readBatteryVoltage();
+    //readBatteryVoltage();
   }
 
   if (millis() >= infoTimer) {
@@ -260,8 +250,20 @@ void loop() {
 
 }
 
-void updateServo(Servo servo, int value) {
-  servo.write(value);
+void updateServos() {
+  if (cmdUpdateServoH || cmdUpdateServoV) {
+    Serial.println("update servos");
+    Wire.beginTransmission(SLAVE_ADDR);
+    if (cmdUpdateServoH) {
+      Wire.write(0x0A);
+      Wire.write(hServoVal);
+    }
+    if (cmdUpdateServoV) {
+      Wire.write(0x0B);
+      Wire.write(vServoVal);
+    }
+    Wire.endTransmission();
+  }
 }
 
 void updateMotorShield(char lDir, char rDir, int lPwm, int rPwm) {
