@@ -18,13 +18,13 @@ boolean volatile cmdUpdateServoH = false;
 boolean volatile cmdUpdateServoV = false;
 
 //Pin connected to ST_CP of 74HC595
-int latchPin = 8;
+int latchPin = 7;
 //Pin connected to SH_CP of 74HC595
-int clockPin = 12;
+int clockPin = 8;
 ////Pin connected to DS of 74HC595
-int dataPin = 7;
+int dataPin = 4;
 
-int pwmPins[4]  = {5, 6, 3, 11};
+int pwmPins[4]  = {3, 5, 6, 11};
 
 uint8_t latch_state = 0;
 

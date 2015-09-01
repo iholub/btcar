@@ -219,6 +219,7 @@ void loop() {
 }
 
 void updateSlave() {
+  Serial.println("updateSlave");
   if (cmdUpdateMotor || cmdUpdateServoH || cmdUpdateServoV) {
     Wire.beginTransmission(SLAVE_ADDR);
     if (cmdUpdateMotor) {
@@ -404,7 +405,7 @@ void showInfo() {
      infoStr += ", ping: ";
      infoStr += outstr;
      
-     Serial.println(infoStr);
+     //Serial.println(infoStr);
 }
 
 #ifdef TEST
