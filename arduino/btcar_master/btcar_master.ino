@@ -1,6 +1,6 @@
 /*
  */
-//#include <NewPing.h>
+#include <NewPing.h>
 #include <Wire.h>
 #define SLAVE_ADDR 0x31 // Slave address, should be changed for other slaves
 
@@ -11,7 +11,7 @@ int vServoVal;
 //#define DEBUG
 
 #define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
-#define ECHO_PIN     13  // Arduino pin tied to echo pin on ping sensor.
+#define ECHO_PIN     7  // Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 
 #define MAX_PACKET_SIZE 20
@@ -22,8 +22,7 @@ unsigned long packetTimeCurrent = 0;
 boolean startPacketReading = false;
 int packetBufCounter = 0;
 
-//NewPing sonar(A2, A3, MAX_DISTANCE);
-//NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
 unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
 unsigned long pingTimer;     // Holds the next ping time.
@@ -103,8 +102,7 @@ void loop() {
   // Notice how there's no delays in this sketch to allow you to do other processing in-line while doing distance pings.
   if (millis() >= pingTimer) {   // pingSpeed milliseconds since last ping, do another ping.
     pingTimer += pingSpeed;      // Set the next ping time.
-    //sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
-    //sonar2.ping_timer(echoCheck);
+    sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
   }
 
   cmdUpdateMotor = false;
@@ -274,12 +272,12 @@ void echoCheck() { // Timer2 interrupt calls this function every 24uS where you 
   // Don't do anything here!
   float p1 = -1;
   float p2 = -1;
-//  if (sonar.check_timer()) { // This is how you check to see if the ping was received.
+  if (sonar.check_timer()) { // This is how you check to see if the ping was received.
     // Here's where you can add code.
-//    pingDistance = sonar.ping_result / US_ROUNDTRIP_CM;
-//   isObstacleForward = pingDistance < 30;
-//    p1 = pingDistance;
-//   }
+    pingDistance = sonar.ping_result / US_ROUNDTRIP_CM;
+   isObstacleForward = pingDistance < 30;
+    p1 = pingDistance;
+   }
 //  if (sonar2.check_timer()) {
 //    pingDistance2 = sonar2.ping_result / US_ROUNDTRIP_CM;
 //    p2 = pingDistance2;
