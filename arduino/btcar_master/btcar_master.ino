@@ -56,7 +56,7 @@ boolean stoppedBeforeObstacle = false;
 // ampers start
 #define AMP_OFFSET 2500
 #define BATT_AMP_VOLTS_PER_AMP 66
-#define BATT_AMP_PIN A3
+#define BATT_AMP_PIN A1
 #define BATT_AMP_READ_SPEED 50
 unsigned long readBattAmpTimer;
 float batteryAmps = 0.0;
@@ -73,7 +73,7 @@ const float BATT_VOLT_VD = (BATT_VOLT_R1 + BATT_VOLT_R2)/BATT_VOLT_R2;
 // voltage end
 
 // info start
-#define INFO_SPEED 50
+#define INFO_SPEED 1000
 unsigned long infoTimer;
 String infoStr;
 static char outstr[15];
@@ -85,7 +85,7 @@ void setup() {
 
   cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string
 
-  //pinMode(BATT_AMP_PIN, INPUT);
+  pinMode(BATT_AMP_PIN, INPUT);
   //pinMode(BATT_VOLT_PIN, INPUT);
 
   pingTimer = readBattVoltTimer = readBattAmpTimer = infoTimer = millis(); // Start now.
@@ -203,7 +203,7 @@ void loop() {
   
   if (millis() >= readBattAmpTimer) {
     readBattAmpTimer += BATT_AMP_READ_SPEED;
-    //readBatteryAmps();
+    readBatteryAmps();
   }
 
   if (millis() >= readBattVoltTimer) {
@@ -388,15 +388,14 @@ void readBatteryAmps() {
 }
 
 void showInfo() {
-     //infoStr = "";
-     //dtostrf(batteryAmps,7, 3, outstr);
-     //infoStr += "amps: ";
-     //infoStr += outstr;
-
      infoStr = "";
      infoStr += "uptime: ";
      infoStr += millis();
      
+     dtostrf(batteryAmps,7, 3, outstr);
+     infoStr += ", amps: ";
+     infoStr += outstr;
+
      dtostrf(batteryVoltage,7, 3, outstr);
      infoStr += ", volts: ";
      infoStr += outstr;
@@ -405,7 +404,7 @@ void showInfo() {
      infoStr += ", ping: ";
      infoStr += outstr;
      
-     //Serial.println(infoStr);
+     Serial.println(infoStr);
 }
 
 #ifdef TEST
