@@ -272,7 +272,12 @@
                 w1 = w2 = 'f';
                 s = "000";
             }
-            command = "am" + w1 + s + w2 + s + "z";
+            var cmd = "m" + w1 + s + w2 + s;
+
+            cmd += "h" + pad(camH);
+            cmd += "v" + pad(camV);
+
+            command = "a" + cmd + "z";
         }
 
         function onForward() {
@@ -341,33 +346,39 @@
 
         function camUp() {
             camV = incCam(camV, -5);
-            var cmd = "v" + pad(camV);
-            doAjax("a" + cmd + "z");
+            $("#servoV").html(camV);
+            //var cmd = "v" + pad(camV);
+            //doAjax("a" + cmd + "z");
         }
 
         function camDown() {
             camV = incCam(camV, 5);
-            var cmd = "v" + pad(camV);
-            doAjax("a" + cmd + "z");
+            $("#servoV").html(camV);
+            //var cmd = "v" + pad(camV);
+            //doAjax("a" + cmd + "z");
         }
 
         function camLeft() {
             camH = incCam(camH, 5);
-            var cmd = "h" + pad(camH);
-            doAjax("a" + cmd + "z");
+            $("#servoH").html(camH);
+            //var cmd = "h" + pad(camH);
+            //doAjax("a" + cmd + "z");
         }
 
         function camRight() {
             camH = incCam(camH, -5);
-            var cmd = "h" + pad(camH);
-            doAjax("a" + cmd + "z");
+            $("#servoH").html(camH);
+            //var cmd = "h" + pad(camH);
+            //doAjax("a" + cmd + "z");
         }
 
         function camCenter() {
             camH = 90;
             camV = 90;
-            var cmd = "h090v090";
-            doAjax("a" + cmd + "z");
+            $("#servoH").html(camH);
+            $("#servoV").html(camV);
+            //var cmd = "h090v090";
+            //doAjax("a" + cmd + "z");
         }
 
         function incCam(cam, val) {
@@ -498,10 +509,6 @@
                     <td><input type="text" size="3" id="turnSpeedInput" name="turnSpeedInput" value="150"/></td>
                 </tr>
                 <tr>
-                    <td>servo speed:</td>
-                    <td><span id="servo_speed"></span></td>
-                </tr>
-                <tr>
                     <td colspan="2">
                         <table border="0">
                             <tr>
@@ -536,6 +543,14 @@
         </td>
         <td>
             <table border="0">
+                <tr>
+                    <td>Servo H:</td>
+                    <td><span id="servoH"></span></td>
+                </tr>
+                <tr>
+                    <td>Servo V:</td>
+                    <td><span id="servoV"></span></td>
+                </tr>
                 <tr>
                     <td colspan="2">
                         <table border="0">
