@@ -168,7 +168,7 @@
 
         var doKeyDown = function (e) {
             var code = e.which;
-            console.log(code);
+            console.log("down: " + code);
             switch (code) {
                 case M_KEY_UP:
                     e.preventDefault();
@@ -185,10 +185,6 @@
                 case M_KEY_RIGHT:
                     e.preventDefault();
                     onRight();
-                    return;
-                case 70:
-                    e.preventDefault();
-                    onStop();
                     return;
                 case KEY_UP:
                     e.preventDefault();
@@ -215,28 +211,76 @@
 
         var doKeyUp = function (e) {
             var code = e.which;
-            if (code == 13) {
-                e.preventDefault();
-            }
-            var valid = false;
-            if (code in cmdMap) {
-                cmdMap[code].down = false;
-                valid = true;
-            } else if (code in cmdSpeedMap) {
-                cmdSpeedMap[code].down = false;
-                updateSpeed();
+            console.log("up: " + code);
+            switch (code) {
+                case M_KEY_UP:
+                    e.preventDefault();
+                    onStop();
+                    return;
+                case M_KEY_DOWN:
+                    e.preventDefault();
+                    onStop();
+                    return;
+                case M_KEY_LEFT:
+                    e.preventDefault();
+                    onStop();
+                    return;
+                case M_KEY_RIGHT:
+                    e.preventDefault();
+                    onStop();
+                    return;
             }
 
-            console.log("up valid: " + valid);
-
-            return false;
         };
 
+        var command = "ao0z";
+        var driveForward = false;
+        var driveBack = false;
+        var driveLeft = false;
+        var driveRight = false;
+
+        var poll = function () {
+            buildCmd2();
+            $("#cmd").html(cmd);
+            //PING.pingStop();
+            cmdInProgress = true;
+            doAjax(command);
+        };
+
+        function buildCmd2() {
+            var w1;
+            var w2;
+            var s;
+            if (driveForward) {
+                w1 = w2 = 'f';
+                s = readSpeed();
+            }
+            else if (driveBack) {
+                w1 = w2 = 'b';
+                s = readSpeed();
+            }
+            else if (driveLeft) {
+                w1 ='b';
+                w2 ='f';
+                s = readTurnSpeed();
+            }
+            else if (driveRight) {
+                w1 ='f';
+                w2 ='b';
+                s = readTurnSpeed();
+            } else {
+                w1 = w2 = 'f';
+                s = "000";
+            }
+            command = "am" + w1 + s + w2 + s + "z";
+        }
+
         function onForward() {
-            var s = readSpeed();
-            var cmd = "amf" + s + "f" + s;
-            cmd = addOb(cmd);
-            doAjax(cmd + "z");
+            driveForward = true;
+            //var s = readSpeed();
+            //var cmd = "amf" + s + "f" + s;
+            //cmd = addOb(cmd);
+            //doAjax(cmd + "z");
         }
 
         function addOb(cmd) {
@@ -245,31 +289,38 @@
         }
 
         function onBack() {
-            var s = readSpeed();
-            var cmd = "amb" + s + "b" + s;
-            cmd = addOb(cmd);
-            doAjax(cmd + "z");
+            driveBack = true;
+            //var s = readSpeed();
+            //var cmd = "amb" + s + "b" + s;
+            //cmd = addOb(cmd);
+            //doAjax(cmd + "z");
         }
 
         function onLeft() {
-            var s = readTurnSpeed();
-            var cmd = "amb" + s + "f" + s;
-            cmd = addOb(cmd);
-            doAjax(cmd + "z");
+            driveLeft = true;
+            //var s = readTurnSpeed();
+            //var cmd = "amb" + s + "f" + s;
+            //cmd = addOb(cmd);
+            //doAjax(cmd + "z");
         }
 
         function onRight() {
-            var s = readTurnSpeed();
-            var cmd = "amf" + s + "b" + s;
-            cmd = addOb(cmd);
-            doAjax(cmd + "z");
+            driveRight = true;
+            //var s = readTurnSpeed();
+            //var cmd = "amf" + s + "b" + s;
+            //cmd = addOb(cmd);
+            //doAjax(cmd + "z");
         }
 
         function onStop() {
-            var s = "000";
-            var cmd = "amb" + s + "b" + s;
-            cmd = addOb(cmd);
-            doAjax(cmd + "z");
+            driveForward = false;
+            driveBack = false;
+            driveLeft = false;
+            driveRight = false;
+            //var s = "000";
+            //var cmd = "amb" + s + "b" + s;
+            //cmd = addOb(cmd);
+            //doAjax(cmd + "z");
         }
 
         function readSpeed() {
@@ -347,6 +398,7 @@
                 cache: false,
                 timeout: 5000,
                 success: function (data, textStatus, jqXHR) {
+                    console.log("d:" + data + " end");
                     $("#resp").html(data);
                     //log("s");
                 },
@@ -356,6 +408,11 @@
                     var endTime = new Date().getTime();
                     var latency = endTime - startTime;
                     updateLatency(latency);
+                    var nextRun = frequency - latency;
+                    if (nextRun < 0) {
+                        nextRun = 0;
+                    }
+                    setTimeout(poll, nextRun);
                 },
                 error: function () {
                     //log("e");
@@ -374,7 +431,7 @@
             if (arrLength > latencyCmdCount) {
                 latencySum -= latencyList.shift();
             }
-            var avgLatency = latencySum / arrLength;
+            var avgLatency = Math.round(latencySum / arrLength);
             $("#latency").html(latency);
             $("#avg_latency").html(avgLatency);
 
@@ -397,8 +454,11 @@
 
             $("body").keydown(doKeyDown);
 
+            $("body").keyup(doKeyUp);
+
             $("#speed").html(speedStr);
 
+            poll();
             //PING.pingStart();
         });
 
@@ -446,23 +506,23 @@
                         <table border="0">
                             <tr>
                                 <td colspan="3">
-                                    <button type="button" onclick="javascript: onForward();">Forward</button>
+                                    <button type="button" onkeydown="javascript: onForward();">Forward</button>
                                 </td>
                             </tr>
                             <tr>
                                 <td>
-                                    <button type="button" onclick="javascript: onLeft();">Left</button>
+                                    <button type="button" onkeydown="javascript: onLeft();">Left</button>
                                 </td>
                                 <td>
-                                    <button type="button" onclick="javascript: onStop();">Stop</button>
+                                    &nbsp;
                                 </td>
                                 <td>
-                                    <button type="button" onclick="javascript: onRight();">Right</button>
+                                    <button type="button" onkeydown="javascript: onRight();">Right</button>
                                 </td>
                             </tr>
                             <tr>
                                 <td colspan="3">
-                                    <button type="button" onclick="javascript: onBack();">Backward</button>
+                                    <button type="button" onkeydown="javascript: onBack();">Backward</button>
                                 </td>
                             </tr>
                         </table>
