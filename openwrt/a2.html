@@ -248,14 +248,14 @@
         }
 
         function onLeft() {
-            var s = readSpeed();
+            var s = readTurnSpeed();
 			var cmd = "amb" + s + "f" + s;
 			cmd = addOb(cmd);
             doAjax(cmd + "z");
         }
 
         function onRight() {
-            var s = readSpeed();
+            var s = readTurnSpeed();
 			var cmd = "amf" + s + "b" + s;
 			cmd = addOb(cmd);
             doAjax(cmd + "z");
@@ -276,6 +276,14 @@
             return s;
         }
 
+        function readTurnSpeed() {
+            var s = $("#turnSpeedInput").val();
+            if (s.length != 3) {
+             s = "255";
+            }
+            return s;
+        }
+		
         function camUp() {
             camV = incCam(camV, -10);
 			var cmd = "v" + pad(camV);
@@ -386,54 +394,75 @@
     </script>
 </head>
 <body>
-<input type="checkbox" id="idlePing"/>Ping while idle
-<input type="checkbox" id="stopBeforeObstacle"/>Stop before obstacle
+<table width="100%">
+<tr>
+<td>
 <table border="0">
 <tr>
-	<td>cmd:</td><td><span id="cmd"></span></td>
+	<td>Ping while idle:</td>
+	<td><input type="checkbox" id="idlePing"/></td>
 </tr>
 <tr>
-	<td>latency:</td><td><span id="latency"></span></td>
+	<td>Stop before obstacle:</td>
+	<td><input type="checkbox" id="stopBeforeObstacle"/></td>
 </tr>
 <tr>
-	<td>avg latency:</td><td><span id="avg_latency"></span></td>
+	<td>cmd:</td>
+	<td><span id="cmd"></span></td>
 </tr>
 <tr>
-	<td>drive speed:</td><td><span id="speed"></span></td>
+	<td>latency:</td>
+	<td><span id="latency"></span></td>
 </tr>
 <tr>
-	<td>servo speed:</td><td><span id="servo_speed"></span></td>
+	<td>avg latency:</td>
+	<td><span id="avg_latency"></span></td>
+</tr>
+<tr>
+	<td>drive speed:</td>
+	<td><input type="text" size="3" id="speedInput" name="speedInput" value="255"/></td>
+</tr>
+<tr>
+	<td>Turn speed:</td>
+	<td><input type="text" size="3" id="turnSpeedInput" name="turnSpeedInput" value="150"/></td>
+</tr>
+<tr>
+	<td>servo speed:</td>
+	<td><span id="servo_speed"></span></td>
+</tr>
+    <tr>
+	<td colspan="2">
+	<table border="0">
+	<tr>
+	<td colspan="3"><button type="button" onclick="javascript: onForward();">Forward</button></td>
+	</tr>
+	<tr>
+	<td><button type="button" onclick="javascript: onLeft();">Left</button></td>
+	<td><button type="button" onclick="javascript: onStop();">Stop</button></td>
+	<td><button type="button" onclick="javascript: onRight();">Right</button></td>
+	</tr>
+	<tr>
+	<td colspan="3"><button type="button" onclick="javascript: onBack();">Backward</button></td>
+	</tr>
+	</table>
+            
+	</td>
+    </tr>
+</table>
+</td>
+<td width="99%">
+	<img id="camera" src="http://192.168.2.50:8080/?action=stream"/>
+</td>
+<td>
+</td>
 </tr>
 </table>
+
 <table>
-    <tr>
-        <td>
-            <input type="text" id="speedInput" name="speedInput" value="255"/>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <button type="button" onclick="javascript: onForward();">Forward</button>
-            <br>
-            <button type="button" onclick="javascript: onLeft();">Left</button>
-            <button type="button" onclick="javascript: onRight();">Right</button>
-            <br>
-            <button type="button" onclick="javascript: onBack();">Backward</button>
-            <br>
-            <button type="button" onclick="javascript: onStop();">Stop</button>
-        </td>
-    </tr>
     <tr>
         <td>response:</td><td><pre id="resp"></pre></td>
     </tr>
 </table>
-
-<p>
-    <img id="camera" src="http://192.168.2.50:8080/?action=stream"/>
-
-<p/>
-
-
 
 <div id="log">
 </div>
