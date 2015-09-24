@@ -5,8 +5,8 @@
     <title>Wi-fi controlled car with camera</title>
     <script src="jquery.js"></script>
     <script type="text/javascript">
-		var stopBeforeObstacle = false;
-		var stopBeforeObstacleOld = false;
+        var stopBeforeObstacle = false;
+        var stopBeforeObstacleOld = false;
         var cgiUrl = "cgi-bin/lua.cgi?";
         var ajax_request;
         var cmdInProgress = false;
@@ -34,9 +34,9 @@
         var M_KEY_RIGHT = 68;
         var needstop = false;
 
-		var camH = 90;
-		var camV = 90;
-		
+        var camH = 90;
+        var camV = 90;
+
         var cmdSpeedMap = {};
         cmdSpeedMap[SPEED_UP] = new Cmd();
         cmdSpeedMap[SPEED_DOWN] = new Cmd();
@@ -137,7 +137,7 @@
                 res += "h0";
             }
 
-			//res += "o" + (stopBeforeObstacle ? "1" : "0");
+            //res += "o" + (stopBeforeObstacle ? "1" : "0");
             //res += "i";
 
             res += "z";
@@ -171,46 +171,46 @@
             console.log(code);
             switch (code) {
                 case M_KEY_UP:
-                  e.preventDefault();
-                  onForward();
-                  return;
+                    e.preventDefault();
+                    onForward();
+                    return;
                 case M_KEY_DOWN:
-                  e.preventDefault();
-                  onBack();
-                  return;
+                    e.preventDefault();
+                    onBack();
+                    return;
                 case M_KEY_LEFT:
-                  e.preventDefault();
-                  onLeft();
-                  return;
+                    e.preventDefault();
+                    onLeft();
+                    return;
                 case M_KEY_RIGHT:
-                  e.preventDefault();
-                  onRight();
-                  return;
+                    e.preventDefault();
+                    onRight();
+                    return;
                 case 70:
-                  e.preventDefault();
-                  onStop();
-                  return;
+                    e.preventDefault();
+                    onStop();
+                    return;
                 case KEY_UP:
-                  e.preventDefault();
-                  camUp();
-                  return;
+                    e.preventDefault();
+                    camUp();
+                    return;
                 case KEY_DOWN:
-                  e.preventDefault();
-                  camDown();
-                  return;
+                    e.preventDefault();
+                    camDown();
+                    return;
                 case KEY_LEFT:
-                  e.preventDefault();
-                  camLeft();
-                  return;
+                    e.preventDefault();
+                    camLeft();
+                    return;
                 case KEY_RIGHT:
-                  e.preventDefault();
-                  camRight();
-                  return;
+                    e.preventDefault();
+                    camRight();
+                    return;
                 case 80:
-                  e.preventDefault();
-                  camCenter();
-                  return;
-              }
+                    e.preventDefault();
+                    camCenter();
+                    return;
+            }
         };
 
         var doKeyUp = function (e) {
@@ -234,48 +234,48 @@
 
         function onForward() {
             var s = readSpeed();
-			var cmd = "amf" + s + "f" + s;
-			cmd = addOb(cmd);
+            var cmd = "amf" + s + "f" + s;
+            cmd = addOb(cmd);
             doAjax(cmd + "z");
         }
 
-		function addOb(cmd) {
-		  var res  = cmd + "o" + (stopBeforeObstacle ? "1" : "0");
-		  return res;
-		}
-		
+        function addOb(cmd) {
+            var res = cmd + "o" + (stopBeforeObstacle ? "1" : "0");
+            return res;
+        }
+
         function onBack() {
             var s = readSpeed();
-			var cmd = "amb" + s + "b" + s;
-			cmd = addOb(cmd);
+            var cmd = "amb" + s + "b" + s;
+            cmd = addOb(cmd);
             doAjax(cmd + "z");
         }
 
         function onLeft() {
             var s = readTurnSpeed();
-			var cmd = "amb" + s + "f" + s;
-			cmd = addOb(cmd);
+            var cmd = "amb" + s + "f" + s;
+            cmd = addOb(cmd);
             doAjax(cmd + "z");
         }
 
         function onRight() {
             var s = readTurnSpeed();
-			var cmd = "amf" + s + "b" + s;
-			cmd = addOb(cmd);
+            var cmd = "amf" + s + "b" + s;
+            cmd = addOb(cmd);
             doAjax(cmd + "z");
         }
 
         function onStop() {
-		    var s = "000";
-			var cmd = "amb" + s + "b" + s;
-			cmd = addOb(cmd);
+            var s = "000";
+            var cmd = "amb" + s + "b" + s;
+            cmd = addOb(cmd);
             doAjax(cmd + "z");
         }
 
         function readSpeed() {
             var s = $("#speedInput").val();
             if (s.length != 3) {
-             s = "255";
+                s = "255";
             }
             return s;
         }
@@ -283,62 +283,62 @@
         function readTurnSpeed() {
             var s = $("#turnSpeedInput").val();
             if (s.length != 3) {
-             s = "255";
+                s = "255";
             }
             return s;
         }
-		
+
         function camUp() {
             camV = incCam(camV, -5);
-			var cmd = "v" + pad(camV);
+            var cmd = "v" + pad(camV);
             doAjax("a" + cmd + "z");
         }
 
         function camDown() {
             camV = incCam(camV, 5);
-			var cmd = "v" + pad(camV);
+            var cmd = "v" + pad(camV);
             doAjax("a" + cmd + "z");
         }
 
         function camLeft() {
             camH = incCam(camH, 5);
-			var cmd = "h" + pad(camH);
+            var cmd = "h" + pad(camH);
             doAjax("a" + cmd + "z");
         }
 
         function camRight() {
             camH = incCam(camH, -5);
-			var cmd = "h" + pad(camH);
+            var cmd = "h" + pad(camH);
             doAjax("a" + cmd + "z");
         }
 
-		function camCenter() {
+        function camCenter() {
             camH = 90;
-			camV = 90;
-			var cmd = "h090v090";
+            camV = 90;
+            var cmd = "h090v090";
             doAjax("a" + cmd + "z");
         }
 
-		function incCam(cam, val) {
-		   cam += val;
-		   if (cam < 0) {
-		     cam = 0;
-		   }
-		   else if (cam > 180) {
-		     cam = 180;
-		   }
-		   return cam;
-		}
-		
-		function pad(num) {
-          var s = num + "";
-          while (s.length < 3) s = "0" + s;
-          return s;
+        function incCam(cam, val) {
+            cam += val;
+            if (cam < 0) {
+                cam = 0;
+            }
+            else if (cam > 180) {
+                cam = 180;
+            }
+            return cam;
         }
-		
+
+        function pad(num) {
+            var s = num + "";
+            while (s.length < 3) s = "0" + s;
+            return s;
+        }
+
         function doAjax(cmd) {
             var startTime = new Date().getTime();
-            if(typeof ajax_request !== 'undefined')
+            if (typeof ajax_request !== 'undefined')
                 ajax_request.abort();
             ajax_request = $.ajax({
                 url: cgiUrl + cmd,
@@ -355,7 +355,7 @@
 
                     var endTime = new Date().getTime();
                     var latency = endTime - startTime;
-					updateLatency(latency);
+                    updateLatency(latency);
                 },
                 error: function () {
                     //log("e");
@@ -363,22 +363,22 @@
             })
         }
 
-		var latencyCmdCount = 5;
-		var latencySum = 0;
-		var latencyList = new Array();
-		
-		function updateLatency(latency) {
-			latencyList.push(latency);
-			latencySum += latency;
-			var arrLength = latencyList.length;
-			if (arrLength > latencyCmdCount) {
-				latencySum -= latencyList.shift();
-			}
-			var avgLatency = latencySum / arrLength;
-            $("#latency").html(latency);
-			$("#avg_latency").html(avgLatency);
+        var latencyCmdCount = 5;
+        var latencySum = 0;
+        var latencyList = new Array();
 
-		}
+        function updateLatency(latency) {
+            latencyList.push(latency);
+            latencySum += latency;
+            var arrLength = latencyList.length;
+            if (arrLength > latencyCmdCount) {
+                latencySum -= latencyList.shift();
+            }
+            var avgLatency = latencySum / arrLength;
+            $("#latency").html(latency);
+            $("#avg_latency").html(avgLatency);
+
+        }
 
         function log(str) {
             $("#log").append(str);
@@ -390,15 +390,15 @@
             $('#showInfo').change(function () {
                 showInfo = $(this).is(":checked");
             });
-			
+
             $('#stopBeforeObstacle').change(function () {
                 stopBeforeObstacle = $(this).is(":checked");
             });
-			
+
             $("body").keydown(doKeyDown);
 
-			$("#speed").html(speedStr);
-			
+            $("#speed").html(speedStr);
+
             //PING.pingStart();
         });
 
@@ -406,93 +406,116 @@
 </head>
 <body>
 <table width="100%">
-<tr>
-<td>
-<table border="0">
-<tr>
-	<td>Ping while idle:</td>
-	<td><input type="checkbox" id="idlePing"/></td>
-</tr>
-<tr>
-	<td>Stop before obstacle:</td>
-	<td><input type="checkbox" id="stopBeforeObstacle"/></td>
-</tr>
-<tr>
-	<td>cmd:</td>
-	<td><span id="cmd"></span></td>
-</tr>
-<tr>
-	<td>latency:</td>
-	<td><span id="latency"></span></td>
-</tr>
-<tr>
-	<td>avg latency:</td>
-	<td><span id="avg_latency"></span></td>
-</tr>
-<tr>
-	<td>drive speed:</td>
-	<td><input type="text" size="3" id="speedInput" name="speedInput" value="255"/></td>
-</tr>
-<tr>
-	<td>Turn speed:</td>
-	<td><input type="text" size="3" id="turnSpeedInput" name="turnSpeedInput" value="150"/></td>
-</tr>
-<tr>
-	<td>servo speed:</td>
-	<td><span id="servo_speed"></span></td>
-</tr>
     <tr>
-	<td colspan="2">
-	<table border="0">
-	<tr>
-	<td colspan="3"><button type="button" onclick="javascript: onForward();">Forward</button></td>
-	</tr>
-	<tr>
-	<td><button type="button" onclick="javascript: onLeft();">Left</button></td>
-	<td><button type="button" onclick="javascript: onStop();">Stop</button></td>
-	<td><button type="button" onclick="javascript: onRight();">Right</button></td>
-	</tr>
-	<tr>
-	<td colspan="3"><button type="button" onclick="javascript: onBack();">Backward</button></td>
-	</tr>
-	</table>
-            
-	</td>
-    </tr>
-</table>
-</td>
-<td width="99%">
-	<img id="camera" src="http://192.168.2.50:8080/?action=stream"/>
-</td>
-<td>
-<table border="0">
-    <tr>
-	<td colspan="2">
-	<table border="0">
-	<tr>
-	<td colspan="3"><button type="button" onclick="javascript: camUp();">Up</button></td>
-	</tr>
-	<tr>
-	<td><button type="button" onclick="javascript: camLeft();">Left</button></td>
-	<td><button type="button" onclick="javascript: camCenter();">Center</button></td>
-	<td><button type="button" onclick="javascript: camRight();">Right</button></td>
-	</tr>
-	<tr>
-	<td colspan="3"><button type="button" onclick="javascript: camDown();">Down</button></td>
-	</tr>
-	</table>
-            
-	</td>
-    </tr>
+        <td>
+            <table border="0">
+                <tr>
+                    <td>Ping while idle:</td>
+                    <td><input type="checkbox" id="idlePing"/></td>
+                </tr>
+                <tr>
+                    <td>Stop before obstacle:</td>
+                    <td><input type="checkbox" id="stopBeforeObstacle"/></td>
+                </tr>
+                <tr>
+                    <td>cmd:</td>
+                    <td><span id="cmd"></span></td>
+                </tr>
+                <tr>
+                    <td>latency:</td>
+                    <td><span id="latency"></span></td>
+                </tr>
+                <tr>
+                    <td>avg latency:</td>
+                    <td><span id="avg_latency"></span></td>
+                </tr>
+                <tr>
+                    <td>drive speed:</td>
+                    <td><input type="text" size="3" id="speedInput" name="speedInput" value="255"/></td>
+                </tr>
+                <tr>
+                    <td>Turn speed:</td>
+                    <td><input type="text" size="3" id="turnSpeedInput" name="turnSpeedInput" value="150"/></td>
+                </tr>
+                <tr>
+                    <td>servo speed:</td>
+                    <td><span id="servo_speed"></span></td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+                        <table border="0">
+                            <tr>
+                                <td colspan="3">
+                                    <button type="button" onclick="javascript: onForward();">Forward</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <button type="button" onclick="javascript: onLeft();">Left</button>
+                                </td>
+                                <td>
+                                    <button type="button" onclick="javascript: onStop();">Stop</button>
+                                </td>
+                                <td>
+                                    <button type="button" onclick="javascript: onRight();">Right</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="3">
+                                    <button type="button" onclick="javascript: onBack();">Backward</button>
+                                </td>
+                            </tr>
+                        </table>
 
-</table>
-</td>
-</tr>
+                    </td>
+                </tr>
+            </table>
+        </td>
+        <td width="99%">
+            <img id="camera" src="http://192.168.2.50:8080/?action=stream"/>
+        </td>
+        <td>
+            <table border="0">
+                <tr>
+                    <td colspan="2">
+                        <table border="0">
+                            <tr>
+                                <td colspan="3">
+                                    <button type="button" onclick="javascript: camUp();">Up</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <button type="button" onclick="javascript: camLeft();">Left</button>
+                                </td>
+                                <td>
+                                    <button type="button" onclick="javascript: camCenter();">Center</button>
+                                </td>
+                                <td>
+                                    <button type="button" onclick="javascript: camRight();">Right</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="3">
+                                    <button type="button" onclick="javascript: camDown();">Down</button>
+                                </td>
+                            </tr>
+                        </table>
+
+                    </td>
+                </tr>
+
+            </table>
+        </td>
+    </tr>
 </table>
 
 <table>
     <tr>
-        <td>response:</td><td><pre id="resp"></pre></td>
+        <td>response:</td>
+        <td>
+            <pre id="resp"></pre>
+        </td>
     </tr>
 </table>
 
