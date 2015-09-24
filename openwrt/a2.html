@@ -206,6 +206,10 @@
                   e.preventDefault();
                   camRight();
                   return;
+                case 80:
+                  e.preventDefault();
+                  camCenter();
+                  return;
               }
         };
 
@@ -285,29 +289,36 @@
         }
 		
         function camUp() {
-            camV = incCam(camV, -10);
+            camV = incCam(camV, -5);
 			var cmd = "v" + pad(camV);
             doAjax("a" + cmd + "z");
         }
 
         function camDown() {
-            camV = incCam(camV, 10);
+            camV = incCam(camV, 5);
 			var cmd = "v" + pad(camV);
             doAjax("a" + cmd + "z");
         }
 
         function camLeft() {
-            camH = incCam(camH, 10);
+            camH = incCam(camH, 5);
 			var cmd = "h" + pad(camH);
             doAjax("a" + cmd + "z");
         }
 
         function camRight() {
-            camH = incCam(camH, -10);
+            camH = incCam(camH, -5);
 			var cmd = "h" + pad(camH);
             doAjax("a" + cmd + "z");
         }
-		
+
+		function camCenter() {
+            camH = 90;
+			camV = 90;
+			var cmd = "h090v090";
+            doAjax("a" + cmd + "z");
+        }
+
 		function incCam(cam, val) {
 		   cam += val;
 		   if (cam < 0) {
@@ -454,6 +465,27 @@
 	<img id="camera" src="http://192.168.2.50:8080/?action=stream"/>
 </td>
 <td>
+<table border="0">
+    <tr>
+	<td colspan="2">
+	<table border="0">
+	<tr>
+	<td colspan="3"><button type="button" onclick="javascript: camUp();">Up</button></td>
+	</tr>
+	<tr>
+	<td><button type="button" onclick="javascript: camLeft();">Left</button></td>
+	<td><button type="button" onclick="javascript: camCenter();">Center</button></td>
+	<td><button type="button" onclick="javascript: camRight();">Right</button></td>
+	</tr>
+	<tr>
+	<td colspan="3"><button type="button" onclick="javascript: camDown();">Down</button></td>
+	</tr>
+	</table>
+            
+	</td>
+    </tr>
+
+</table>
 </td>
 </tr>
 </table>
