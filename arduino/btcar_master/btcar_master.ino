@@ -14,10 +14,10 @@ int vServoVal;
 #define MAX_PACKET_SIZE 20
 #define PACKET_TIMEOUT 100
 char cmdBuf[MAX_PACKET_SIZE + 1];
+int cmdBufInd = 0;
 unsigned long packetTimeStart = 0;
 unsigned long packetTimeCurrent = 0;
 boolean startPacketReading = false;
-int packetBufCounter = 0;
 
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
@@ -26,8 +26,6 @@ unsigned long previousPingTime;     // Holds the next ping time.
 float pingDistance = 999.0;
 float pingDistance2 = 999.0;
 boolean isObstacleForward = false;
-
-char cmd = 0;
 
 boolean cmdUpdateMotor = false;
 boolean cmdStopBeforeObstacle = false;
@@ -126,54 +124,51 @@ void doStopBeforeObstacle() {
   }
 }
 
+void resetSerBuf() {
+  cmdBufInd = 0;
+  startPacketReading = false;
+}
+
 void readPacket() {
   int avail = Serial.available();
   if (avail == 0) {
     return;
   }
-  if (Serial.available() > 0) {
-    cmd = Serial.read();
-    if (startPacketReading) {
-      packetTimeCurrent = millis();
-      if (packetTimeCurrent - packetTimeStart > PACKET_TIMEOUT) {
-        //timeout
-        cmdBuf[packetBufCounter] = 0;
-        packetBufCounter = 0;
-        startPacketReading = false;
-      }
-      else if (packetBufCounter >= MAX_PACKET_SIZE) {
-        //no end of packet symbol
-        cmdBuf[packetBufCounter] = 0;
-        packetBufCounter = 0;
-        startPacketReading = false;
-      }
-      else {
-        if (cmd == 'z') {
-          //end of packet
-          //parse packet
-          cmdBuf[packetBufCounter] = 0;
-          boolean parsedOk = parseCmdPacket();
-          if (parsedOk) {
-            updateSlave();
-          }
-          showInfo();
-
-          packetBufCounter = 0;
-          startPacketReading = false;
-        }
-        else {
-          cmdBuf[packetBufCounter] = cmd;
-          packetBufCounter++;
-        }
-      }
+  boolean packetReady = false;
+  for (int i = 0; i < avail; i++) {
+    char cmd = Serial.read();
+    //TODO fix
+    if (cmdBufInd >= MAX_PACKET_SIZE) {
+      //error
+      resetSerBuf();
+      return;
     }
     if (cmd == 'a') {
-      packetTimeStart = millis();
+      resetSerBuf();
       startPacketReading = true;
-      for (int i = 0; i < MAX_PACKET_SIZE; i++) {
-        cmdBuf[i] = 0;
-      }
     }
+    else if (cmd == 'z') {
+      if (!startPacketReading) {
+        //error
+        resetSerBuf();
+        return;
+      }
+      packetReady = true;
+      break;
+    }
+    cmdBuf[cmdBufInd] = cmd;
+    cmdBufInd++;
+  }
+
+  if (packetReady) {
+    //parse packet
+    boolean parsedOk = parseCmdPacket();
+    if (parsedOk) {
+      updateSlave();
+    }
+    showInfo();
+
+    resetSerBuf();
   }
 
 }
