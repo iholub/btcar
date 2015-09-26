@@ -7,9 +7,6 @@
 int hServoVal;
 int vServoVal;
 
-//#define TEST
-//#define DEBUG
-
 #define TRIGGER_PIN  4  // Arduino pin tied to trigger pin on ping sensor.
 #define ECHO_PIN     7  // Arduino pin tied to echo pin on ping sensor.
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
@@ -24,13 +21,11 @@ int packetBufCounter = 0;
 
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
 
-unsigned int pingSpeed = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
-unsigned long pingTimer;     // Holds the next ping time.
+unsigned int PING_PERIOD = 50; // How frequently are we going to send out a ping (in milliseconds). 50ms would be 20 times a second.
+unsigned long previousPingTime;     // Holds the next ping time.
 float pingDistance = 999.0;
 float pingDistance2 = 999.0;
 boolean isObstacleForward = false;
-unsigned long pingTime1 = 0;
-unsigned long pingTime2 = 0;
 
 char cmd = 0;
 
@@ -66,20 +61,18 @@ float batteryAmps = 0.0;
 #define BATT_VOLT_READ_SPEED 50
 unsigned long readBattVoltTimer;
 float batteryVoltage = 0.0;
-#define BATT_VOLT_R1 51000 
-#define BATT_VOLT_R2 47000 
-const float BATT_VOLT_VD = (BATT_VOLT_R1 + BATT_VOLT_R2)/BATT_VOLT_R2;
+#define BATT_VOLT_R1 51000
+#define BATT_VOLT_R2 47000
+const float BATT_VOLT_VD = (BATT_VOLT_R1 + BATT_VOLT_R2) / BATT_VOLT_R2;
 // voltage end
 
 // info start
-#define INFO_SPEED 1000
-unsigned long infoTimer;
 String infoStr;
 static char outstr[15];
 // info end
 
 void setup() {
-  Serial.begin(38400);
+  Serial.begin(115200);
   Wire.begin();
 
   cmdBuf[MAX_PACKET_SIZE] = 0; //null terminated string
@@ -87,21 +80,15 @@ void setup() {
   pinMode(BATT_AMP_PIN, INPUT);
   //pinMode(BATT_VOLT_PIN, INPUT);
 
-  pingTimer = readBattVoltTimer = readBattAmpTimer = infoTimer = millis(); // Start now.
-  
+  previousPingTime = readBattVoltTimer = readBattAmpTimer = millis(); // Start now.
+
 }
 
 void loop() {
-#ifdef TEST
-  if (true) {
-    testMotorShield();
-    return;
-  }
-#endif
-
   // Notice how there's no delays in this sketch to allow you to do other processing in-line while doing distance pings.
-  if (millis() >= pingTimer) {   // pingSpeed milliseconds since last ping, do another ping.
-    pingTimer += pingSpeed;      // Set the next ping time.
+  unsigned long currTime = millis();
+  if (currTime - previousPingTime >= PING_PERIOD) {   // PING_PERIOD milliseconds since last ping, do another ping.
+    previousPingTime = currTime;      // Set the next ping time.
     sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
   }
 
@@ -114,7 +101,7 @@ void loop() {
     if (isObstacleForward && (lDir == 'f') && (rDir == 'f')) {
       stoppedBeforeObstacle = true;
       updateMotorShield('s', 's', 0, 0);
-    } 
+    }
     else {
       if (stoppedBeforeObstacle) {
         stoppedBeforeObstacle = false;
@@ -124,61 +111,36 @@ void loop() {
     }
   }
 
-  pingTime2 = millis();
-  if (pingTime2 - pingTime1 > 500) {
-    pingTime1 = pingTime2;
-    //bt.print("distance: ");
-    //bt.println(pingDistance);
-  }
   if (Serial.available() > 0) {
     cmd = Serial.read();
-    //Serial.print(cmd);
-    //bt.print("I received: ");
-    //bt.println(cmd);
     if (startPacketReading) {
       packetTimeCurrent = millis();
       if (packetTimeCurrent - packetTimeStart > PACKET_TIMEOUT) {
         //timeout
         cmdBuf[packetBufCounter] = 0;
-#ifdef DEBUG
-        Serial.print("timeout, ");
-        Serial.print("buf: ");
-        Serial.println(cmdBuf);
-#endif
-
-          packetBufCounter = 0;
+        packetBufCounter = 0;
         startPacketReading = false;
-      } 
+      }
       else if (packetBufCounter >= MAX_PACKET_SIZE) {
         //no end of packet symbol
         cmdBuf[packetBufCounter] = 0;
-#ifdef DEBUG
-        Serial.print("no end of packet, ");
-        Serial.print("buf: ");
-        Serial.println(cmdBuf);
-#endif
-
-          packetBufCounter = 0;
+        packetBufCounter = 0;
         startPacketReading = false;
-      } 
+      }
       else {
         if (cmd == 'z') {
           //end of packet
           //parse packet
           cmdBuf[packetBufCounter] = 0;
-#ifdef DEBUG
-          Serial.print("ok, buf: ");
-          Serial.println(cmdBuf);
-#endif
-
-            boolean parsedOk = parseCmdPacket();
+          boolean parsedOk = parseCmdPacket();
           if (parsedOk) {
             updateSlave();
           }
+          showInfo();
 
           packetBufCounter = 0;
           startPacketReading = false;
-        } 
+        }
         else {
           cmdBuf[packetBufCounter] = cmd;
           packetBufCounter++;
@@ -192,32 +154,23 @@ void loop() {
         cmdBuf[i] = 0;
       }
     }
-
-    // say what you got:
-    //Serial.print("I received: ");
-    //Serial.println(cmd, DEC);
-
   }
-  
-  if (millis() >= readBattAmpTimer) {
-    readBattAmpTimer += BATT_AMP_READ_SPEED;
+
+  currTime = millis();
+  if (currTime - readBattAmpTimer >= BATT_AMP_READ_SPEED) {
+    readBattAmpTimer = currTime;
     readBatteryAmps();
   }
 
-  if (millis() >= readBattVoltTimer) {
-    readBattVoltTimer += BATT_VOLT_READ_SPEED;
-    //readBatteryVoltage();
-  }
-
-  if (millis() >= infoTimer) {
-    infoTimer += INFO_SPEED;
-    showInfo();
+  currTime = millis();
+  if (currTime - readBattVoltTimer >= BATT_VOLT_READ_SPEED) {
+    readBattVoltTimer = currTime;
+    readBatteryVoltage();
   }
 
 }
 
 void updateSlave() {
-  Serial.println("updateSlave");
   if (cmdUpdateMotor || cmdUpdateServoH || cmdUpdateServoV) {
     Wire.beginTransmission(SLAVE_ADDR);
     if (cmdUpdateMotor) {
@@ -227,7 +180,7 @@ void updateSlave() {
       Wire.write(lPwm);
       Wire.write(dirToByte(lDir));
       Wire.write(lPwm);
-      
+
       Wire.write(dirToByte(rDir));
       Wire.write(rPwm);
       Wire.write(dirToByte(rDir));
@@ -247,21 +200,21 @@ void updateSlave() {
 
 byte dirToByte(char cmd) {
   switch (cmd) {
-  case 'f':
-    return 1;
-  case 'b':
-    return 2;
-  case 's':
-    return 3;  
+    case 'f':
+      return 1;
+    case 'b':
+      return 2;
+    case 's':
+      return 3;
   }
   //TODO brake, release
   return 4;
 }
 
 void updateMotorShield(char plDir, char prDir, int plPwm, int prPwm) {
-  lDir = plDir; 
-  rDir = prDir; 
-  lPwm = plPwm; 
+  lDir = plDir;
+  rDir = prDir;
+  lPwm = plPwm;
   rPwm = prPwm;
   cmdUpdateMotor = true;
   updateSlave();
@@ -275,19 +228,9 @@ void echoCheck() { // Timer2 interrupt calls this function every 24uS where you 
   if (sonar.check_timer()) { // This is how you check to see if the ping was received.
     // Here's where you can add code.
     pingDistance = sonar.ping_result / US_ROUNDTRIP_CM;
-   isObstacleForward = pingDistance < 30;
+    isObstacleForward = pingDistance < 30;
     p1 = pingDistance;
-   }
-//  if (sonar2.check_timer()) {
-//    pingDistance2 = sonar2.ping_result / US_ROUNDTRIP_CM;
-//    p2 = pingDistance2;
-//  }
-  if (p1 > 0 || p2 > 0) {
-    //Serial.print(p1);
-    //Serial.print("   ");
-    //Serial.println(p2);
   }
-  // Don't do anything here!
 }
 
 boolean parseCmdPacket() {
@@ -308,7 +251,7 @@ boolean parseCmdPacket() {
       if (pos + cmdLength <= strLen - 1) {
         cmdUpdateMotor = true;
         parseMotorCommand(cmdStr, pos);
-      } 
+      }
       else {
         err = true;
         break;
@@ -324,7 +267,7 @@ boolean parseCmdPacket() {
       if (pos + cmdLength <= strLen - 1) {
         cmdUpdateServoH = true;
         parseServoCommandH(cmdStr, pos);
-      } 
+      }
       else {
         err = true;
         break;
@@ -335,7 +278,7 @@ boolean parseCmdPacket() {
       if (pos + cmdLength <= strLen - 1) {
         cmdUpdateServoV = true;
         parseServoCommandV(cmdStr, pos);
-      } 
+      }
       else {
         err = true;
         break;
@@ -386,86 +329,22 @@ void readBatteryAmps() {
 }
 
 void showInfo() {
-     infoStr = "";
-     infoStr += "uptime: ";
-     infoStr += millis();
-     
-     dtostrf(batteryAmps,7, 3, outstr);
-     infoStr += ", amps: ";
-     infoStr += outstr;
+  infoStr = "";
+  infoStr += "uptime: ";
+  infoStr += millis();
 
-     dtostrf(batteryVoltage,7, 3, outstr);
-     infoStr += ", volts: ";
-     infoStr += outstr;
-     
-     dtostrf(pingDistance,7, 3, outstr);
-     infoStr += ", ping: ";
-     infoStr += outstr;
-     
-     Serial.println(infoStr);
+  dtostrf(batteryAmps, 7, 3, outstr);
+  infoStr += ", amps: ";
+  infoStr += outstr;
+
+  dtostrf(batteryVoltage, 7, 3, outstr);
+  infoStr += ", volts: ";
+  infoStr += outstr;
+
+  dtostrf(pingDistance, 7, 3, outstr);
+  infoStr += ", ping: ";
+  infoStr += outstr;
+
+  Serial.println(infoStr);
 }
-
-#ifdef TEST
-void testMotorShield() {
-  delay(1000);
-  
-  char f = 'f';
-  char b = 'b';
-  char s = 's';
-  int sp = 100;
-  int maxSpeed = 255;
-  int del1 = 3000;
-  int del2 = 1000;
-
-  updateMotorShield(f, s, sp, 0);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  updateMotorShield(b, s, sp, 0);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  updateMotorShield(s, f, 0, sp);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  updateMotorShield(s, b, 0, sp);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  updateMotorShield(f, f, sp, sp);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  updateMotorShield(b, b, sp, sp);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  updateMotorShield(f, b, sp, sp);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  updateMotorShield(b, f, sp, sp);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  updateMotorShield(f, f, maxSpeed, maxSpeed);
-  delay(del1);
-  updateMotorShield(s, s, 0, 0);
-  delay(del2);
-
-  delay(5000);
-}
-#endif
-
-
-
 
