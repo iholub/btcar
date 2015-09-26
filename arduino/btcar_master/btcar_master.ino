@@ -85,18 +85,32 @@ void setup() {
 }
 
 void loop() {
-  // Notice how there's no delays in this sketch to allow you to do other processing in-line while doing distance pings.
-  unsigned long currTime = millis();
-  if (currTime - previousPingTime >= PING_PERIOD) {   // PING_PERIOD milliseconds since last ping, do another ping.
-    previousPingTime = currTime;      // Set the next ping time.
-    sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
-  }
+  sendPing();
 
   cmdUpdateMotor = false;
   cmdStopBeforeObstacle = false;
   cmdUpdateServoH = false;
   cmdUpdateServoV = false;
 
+  doStopBeforeObstacle();
+
+  readPacket();
+
+  unsigned long currTime = millis();
+  if (currTime - readBattAmpTimer >= BATT_AMP_READ_SPEED) {
+    readBattAmpTimer = currTime;
+    readBatteryAmps();
+  }
+
+  currTime = millis();
+  if (currTime - readBattVoltTimer >= BATT_VOLT_READ_SPEED) {
+    readBattVoltTimer = currTime;
+    readBatteryVoltage();
+  }
+
+}
+
+void doStopBeforeObstacle() {
   if (stopBeforeObstacle) {
     if (isObstacleForward && (lDir == 'f') && (rDir == 'f')) {
       stoppedBeforeObstacle = true;
@@ -110,7 +124,13 @@ void loop() {
       }
     }
   }
+}
 
+void readPacket() {
+  int avail = Serial.available();
+  if (avail == 0) {
+    return;
+  }
   if (Serial.available() > 0) {
     cmd = Serial.read();
     if (startPacketReading) {
@@ -156,18 +176,14 @@ void loop() {
     }
   }
 
-  currTime = millis();
-  if (currTime - readBattAmpTimer >= BATT_AMP_READ_SPEED) {
-    readBattAmpTimer = currTime;
-    readBatteryAmps();
-  }
+}
 
-  currTime = millis();
-  if (currTime - readBattVoltTimer >= BATT_VOLT_READ_SPEED) {
-    readBattVoltTimer = currTime;
-    readBatteryVoltage();
+void sendPing() {
+  unsigned long currTime = millis();
+  if (currTime - previousPingTime >= PING_PERIOD) {   // PING_PERIOD milliseconds since last ping, do another ping.
+    previousPingTime = currTime;      // Set the next ping time.
+    sonar.ping_timer(echoCheck); // Send out the ping, calls "echoCheck" function every 24uS where you can check the ping status.
   }
-
 }
 
 void updateSlave() {
